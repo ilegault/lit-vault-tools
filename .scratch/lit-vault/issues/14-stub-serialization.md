@@ -1,6 +1,6 @@
 # 14: Explore domain: stub note text and stub id reading
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 **Runner:** any
 
