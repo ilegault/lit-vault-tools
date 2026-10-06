@@ -1,6 +1,6 @@
 # 02: Frontmatter regions: byte-preserving read and enrichment write
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 **Runner:** any
 
