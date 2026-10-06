@@ -1,6 +1,6 @@
 # 04: Author, institution and subfield naming and rendering
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 **Runner:** any
 
