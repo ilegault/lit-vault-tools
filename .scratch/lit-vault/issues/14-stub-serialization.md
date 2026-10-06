@@ -1,6 +1,6 @@
 # 14: Explore domain: stub note text and stub id reading
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Runner:** any
 
@@ -19,10 +19,10 @@ Frontmatter: `type: stub`, `s2_id`, `doi` (normalized; omitted when unknown), `r
 
 ## Acceptance criteria
 
-- [ ] For a fully populated neighbor, the rendered text equals a literal expected string written in the test (frontmatter block, title heading, authors line, year, venue, citation count, influential flag, tldr, abstract, DOI).
-- [ ] Authors are plain text: the output contains no `[[` anywhere, even if an author name or title contains brackets (they are rendered as-is, not as links).
-- [ ] A neighbor without `abstract`, `tldr` or `venue` renders without those sections and the text never contains the strings `None` or `null`; a neighbor without a DOI has no `doi:` line.
-- [ ] `read_stub_ids(render_stub(n))` returns `PaperIds` with the neighbor's normalized DOI and `s2_id`; `render_stub` is deterministic (two calls give identical text).
+- [x] For a fully populated neighbor, the rendered text equals a literal expected string written in the test (frontmatter block, title heading, authors line, year, venue, citation count, influential flag, tldr, abstract, DOI).
+- [x] Authors are plain text: the output contains no `[[` anywhere, even if an author name or title contains brackets (they are rendered as-is, not as links).
+- [x] A neighbor without `abstract`, `tldr` or `venue` renders without those sections and the text never contains the strings `None` or `null`; a neighbor without a DOI has no `doi:` line.
+- [x] `read_stub_ids(render_stub(n))` returns `PaperIds` with the neighbor's normalized DOI and `s2_id`; `render_stub` is deterministic (two calls give identical text).
 
 ## Gate
 
@@ -35,3 +35,5 @@ pytest -q
 CI (`.github/workflows/tests.yml`) runs exactly these, with `PYTHONUTF8=1` and bogus `OPENALEX_API_KEY` / `S2_API_KEY`. Zero failures before pushing.
 
 ## Comments
+
+2026-10-06: added `domain/stubs.py` (`render_stub`, `read_stub_ids`). `tests/test_stubs.py` covers criterion 1 (literal expected text), 2 (no `[[` even with brackets in author/title/abstract; they are broken apart as `[ [` since a literal `[[` would be a link), 3 (omitted sections, no None/null, no `doi:` line), 4 (id round trip, determinism). Mutation check: disabling bracket defusing turns the wikilink test red.
