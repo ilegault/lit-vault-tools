@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "lit-vault-tools"
+version = "0.1.0"
+description = "Enrich and Explore commands for the literature-review Obsidian vault"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+lit-vault = "lit_vault_tools.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/lit_vault_tools"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
