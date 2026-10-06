@@ -1,6 +1,6 @@
 # 01: DOI normalization, paper matching and config constants
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 **Runner:** any
 
