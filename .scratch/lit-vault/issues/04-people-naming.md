@@ -1,6 +1,6 @@
 # 04: Author, institution and subfield naming and rendering
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Runner:** any
 
@@ -19,11 +19,11 @@ Dataclasses `AuthorRef(openalex_id, display_name)` and `InstitutionRef(openalex_
 
 ## Acceptance criteria
 
-- [ ] `sanitize_filename("A/B: C?")` replaces each of `\ / : * ? " < > |` with `-` and trims trailing dots and spaces (Windows-safe), e.g. `"A-B- C-"`; a name that sanitizes to empty becomes `"Unnamed"`.
-- [ ] `assign_author_filenames(seen, existing)`: with two different `openalex_id`s both displayed `Jane Doe`, the second gets `Jane Doe (Oak Ridge National Laboratory)`; a still-colliding third gets ` (2)` appended. `existing` (id -> filename) is never changed: running again with the authors in reverse order returns the same filename for every id already in `existing`.
-- [ ] `merge_aliases(existing, seen_names, display_name)` returns existing aliases in their order followed by new unseen variants in first-seen order, with no duplicates and without `display_name` itself; calling it twice gives the same list.
-- [ ] `institution_location(lat, lng)` returns `"35.9,-84.3"`-style `"lat,lng"` text for known coordinates and `None` when either is `None` or both are `0` (never `"0,0"`). `render_institution_note` emits no `location:` line when it is `None` and the text contains no `0,0` anywhere.
-- [ ] `render_author_note` returns text with `type: author`, `openalex_id: <id>`, `aliases: [...]` and an empty body; `render_institution_note` has `type: institution`, `ror`, `country`, `institution_type`, `openalex_id`; `render_subfield_note` has `type: subfield`. Output is deterministic (same input, identical text).
+- [x] `sanitize_filename("A/B: C?")` replaces each of `\ / : * ? " < > |` with `-` and trims trailing dots and spaces (Windows-safe), e.g. `"A-B- C-"`; a name that sanitizes to empty becomes `"Unnamed"`.
+- [x] `assign_author_filenames(seen, existing)`: with two different `openalex_id`s both displayed `Jane Doe`, the second gets `Jane Doe (Oak Ridge National Laboratory)`; a still-colliding third gets ` (2)` appended. `existing` (id -> filename) is never changed: running again with the authors in reverse order returns the same filename for every id already in `existing`.
+- [x] `merge_aliases(existing, seen_names, display_name)` returns existing aliases in their order followed by new unseen variants in first-seen order, with no duplicates and without `display_name` itself; calling it twice gives the same list.
+- [x] `institution_location(lat, lng)` returns `"35.9,-84.3"`-style `"lat,lng"` text for known coordinates and `None` when either is `None` or both are `0` (never `"0,0"`). `render_institution_note` emits no `location:` line when it is `None` and the text contains no `0,0` anywhere.
+- [x] `render_author_note` returns text with `type: author`, `openalex_id: <id>`, `aliases: [...]` and an empty body; `render_institution_note` has `type: institution`, `ror`, `country`, `institution_type`, `openalex_id`; `render_subfield_note` has `type: subfield`. Output is deterministic (same input, identical text).
 
 ## Gate
 
@@ -36,3 +36,5 @@ pytest -q
 CI (`.github/workflows/tests.yml`) runs exactly these, with `PYTHONUTF8=1` and bogus `OPENALEX_API_KEY` / `S2_API_KEY`. Zero failures before pushing.
 
 ## Comments
+
+2026-10-06: Added `domain/people.py` and `tests/test_people.py` (one group of tests per criterion). Mutation check: removing the 0,0 guard turned 3 tests red. Decisions: `seen` is a sequence of `(AuthorRef, institution_name | None)`; the result maps every id (existing included) to a filename; collisions are case-insensitive; `render_subfield_note(display_name, openalex_id=None)`.
