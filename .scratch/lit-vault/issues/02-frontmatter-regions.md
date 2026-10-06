@@ -1,6 +1,6 @@
 # 02: Frontmatter regions: byte-preserving read and enrichment write
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Runner:** any
 
@@ -19,11 +19,11 @@ API: `split_note(text) -> NoteParts` (with `.render()`), `read_scalar(parts, key
 
 ## Acceptance criteria
 
-- [ ] `split_note(text).render() == text` for: a normal note, a note with no frontmatter, a note with an empty body, a body containing its own `---` lines, and a CRLF note (assert the CRLF bytes survive). The body of a note is returned byte-for-byte.
-- [ ] `read_scalar` returns the value for `doi: 10.1016/x`, `doi: "10.1016/x"` and `doi: 10.1016/x  # note` (quotes and trailing comment stripped), and `None` for an absent key. `read_list` returns `["[[A]]", "[[B]]"]` for `refs: ["[[A]]", "[[B]]"]` and `[]` for `refs: []`.
-- [ ] `apply_enrichment` with values for several keys leaves every non-enrichment line (including multi-line Zotero values such as `abstract: |` blocks) identical and in the same order, writes the owned keys in `ENRICHMENT_KEYS` order after the marker line `# ---- enrichment-script-owned ----`, serializes lists as `["[[X]]", ...]`, and omits a key whose value is `None`. The body is identical.
-- [ ] `apply_enrichment` raises `ValueError` for a key not in `ENRICHMENT_KEYS` (`citekey`, `title`, `doi`), and the input `NoteParts` is unchanged. Applying the same values twice gives text identical to applying them once.
-- [ ] `enriched_on` rule: with no existing block it is set to `today`; with an existing block and identical values (ignoring `enriched_on`) the existing date is kept even when `today` differs; when any other owned value changed, `enriched_on` becomes `today`. New lines use the note's own line ending (a CRLF note stays all-CRLF).
+- [x] `split_note(text).render() == text` for: a normal note, a note with no frontmatter, a note with an empty body, a body containing its own `---` lines, and a CRLF note (assert the CRLF bytes survive). The body of a note is returned byte-for-byte.
+- [x] `read_scalar` returns the value for `doi: 10.1016/x`, `doi: "10.1016/x"` and `doi: 10.1016/x  # note` (quotes and trailing comment stripped), and `None` for an absent key. `read_list` returns `["[[A]]", "[[B]]"]` for `refs: ["[[A]]", "[[B]]"]` and `[]` for `refs: []`.
+- [x] `apply_enrichment` with values for several keys leaves every non-enrichment line (including multi-line Zotero values such as `abstract: |` blocks) identical and in the same order, writes the owned keys in `ENRICHMENT_KEYS` order after the marker line `# ---- enrichment-script-owned ----`, serializes lists as `["[[X]]", ...]`, and omits a key whose value is `None`. The body is identical.
+- [x] `apply_enrichment` raises `ValueError` for a key not in `ENRICHMENT_KEYS` (`citekey`, `title`, `doi`), and the input `NoteParts` is unchanged. Applying the same values twice gives text identical to applying them once.
+- [x] `enriched_on` rule: with no existing block it is set to `today`; with an existing block and identical values (ignoring `enriched_on`) the existing date is kept even when `today` differs; when any other owned value changed, `enriched_on` becomes `today`. New lines use the note's own line ending (a CRLF note stays all-CRLF).
 
 ## Gate
 
@@ -36,3 +36,8 @@ pytest -q
 CI (`.github/workflows/tests.yml`) runs exactly these, with `PYTHONUTF8=1` and bogus `OPENALEX_API_KEY` / `S2_API_KEY`. Zero failures before pushing.
 
 ## Comments
+
+Done (2026-10-06): added `domain/frontmatter.py` and `tests/test_frontmatter.py`.
+Criterion 1 (round trips, CRLF, body) and 2 (read_scalar/read_list) and 3-5 (apply_enrichment, ValueError, enriched_on, CRLF) are all covered there.
+Design decisions beyond the ticket, documented in the module docstring: `values` is a patch (None removes a key, unmentioned keys are kept); passing `enriched_on` raises ValueError; a no-op apply returns the note unchanged (so hand-formatted owned lines survive a clean re-run); a note with no frontmatter gets a block holding only the enrichment keys.
+Mutation checks (each turned tests red): skipping block continuation lines, writing `\n` instead of the note's eol, never bumping `enriched_on`, and returning early on no change.
