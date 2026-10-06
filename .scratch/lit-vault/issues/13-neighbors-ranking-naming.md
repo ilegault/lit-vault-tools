@@ -1,6 +1,6 @@
 # 13: Explore domain: neighbor model, ranking and stub filenames
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 **Runner:** any
 
