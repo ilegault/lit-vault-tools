@@ -1,0 +1,27 @@
+"""Constants and tunables. No I/O, no imports from the rest of the package.
+
+WHY THIS EXISTS
+---------------
+Every other layer imports from here, so a tunable lives in exactly one place.
+`ENRICHMENT_KEYS` is the ownership boundary from CONTEXT.md: the frontmatter
+keys the enrichment script owns. Anything not listed is Zotero's or the
+developer's, and the script must never write it.
+"""
+
+ENRICHMENT_KEYS: tuple[str, ...] = (
+    "openalex_id",
+    "s2_id",
+    "oa_status",
+    "institutions",
+    "countries",
+    "authors",
+    "subfield",
+    "refs",
+    "cited_by",
+    "enrich_status",
+    "enriched_on",
+)
+
+EXPLORE_DIR = "_explore"
+STUB_CAP_PER_LIST = 200
+TRAIL_LENGTH = 3
