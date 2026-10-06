@@ -1,6 +1,6 @@
 # Literature Review Vault — Context
 
-Status: design decisions complete (rounds 1–2). Next step: break this into tickets with the `ticket-set` skill. No separate spec needed — this file is the spec input. Read it fully before writing tickets.
+Status: design decisions complete (rounds 1–3). Tickets are in `.scratch/lit-vault/issues/`. This file is the spec; there is no separate `spec.md`. Read it fully before touching code.
 
 ## Vision
 
@@ -86,11 +86,11 @@ Authors are hard because names collide ("J. Smith") and vary ("Jane Doe", "J. A.
 - Two notes with different IDs are never merged automatically (OpenAlex sometimes splits one person into two IDs; Isaac can merge by hand).
 - Author notes are created for saved papers only. Stubs show authors as plain text — no author nodes for temporary stubs, so exploring never litters the vault.
 
-Institution notes: `ror`, `country`, `type`, `openalex_id`, `location: lat,lng` (Map View format, confirmed). Omit `location` entirely if unknown — never `0,0`.
+Institution notes: `type: institution`, `ror`, `country`, `institution_type` (OpenAlex's own type; named so it does not clash with the note-kind `type`), `openalex_id`, `location: lat,lng` (Map View format, confirmed). Omit `location` entirely if unknown — never `0,0`.
 
 ## Stub lifecycle (temporary previews)
 
-1. **Explore** a focus paper (hotkey in Obsidian on the open note). `_explore/` is wiped, then one stub per reference and citation is written. The focus note gets temporary `refs`/`cited_by`-style links to them (written in `_explore/_focus.md` rather than in the saved note, so saved notes never carry temporary links — design detail to confirm when ticketing).
+1. **Explore** a focus paper (hotkey in Obsidian on the open note). `_explore/` is wiped, then one stub per reference and citation is written. The focus note gets temporary `refs`/`cited_by`-style links to them (written in `_explore/_focus.md` rather than in the saved note, so saved notes never carry temporary links — **decided, round 3**).
 2. Stub content: title, authors (plain text), year, venue, current citation count, `isInfluential`, tldr, abstract, DOI, and whether it's a reference or a citation. Frontmatter carries `type: stub`, `doi`, `s2_id`.
 3. **Stub filenames are readable**, because graph labels are filenames: `Jones 2019 - Dislocation loops in irradiated…` (truncated), with a suffix on collision. Identity is the `s2_id`/`doi` in frontmatter.
 4. **Hover** a stub in the local graph or the focus list → Page Preview shows the abstract. Isaac judges relevance without opening anything.
@@ -129,6 +129,11 @@ Stub size stays bounded: at most one focus paper's neighbours (plus the trail's 
 9. (Round 2) Explore view centers on the open paper; the global graph shows saved papers only.
 10. (Round 2) Explore keeps a short trail: last 3 foci, configurable.
 11. (Round 2) Cap of 200 stubs per list per pass, ranked influential-first then by citation count, with "load more".
+12. (Round 3) HTTP uses the Python standard library (`urllib`) behind an injectable transport function, so the project adds no runtime dependency and tests pass a fake transport that replays saved responses.
+13. (Round 3) The institution geo cache is a JSON file outside the vault, so it never syncs to the phone: `%LOCALAPPDATA%\lit-vault-tools\institutions.json` on Windows, else `$XDG_CACHE_HOME/lit-vault-tools/` or `~/.cache/lit-vault-tools/`. Overridable by an `LIT_VAULT_CACHE_DIR` environment variable (tests use this).
+14. (Round 3) Temporary links to stubs live only in `_explore/_focus.md`, never in a saved note.
+15. (Round 3) Real API responses must be captured into `tests/fixtures/` by the developer (needs the live keys) before any client ticket starts; agents never invent response shapes.
+16. (Round 3) Institution notes carry `type: institution`; OpenAlex's institution type is stored as `institution_type`.
 
 ## Manual setup checklist (once, before first run)
 
