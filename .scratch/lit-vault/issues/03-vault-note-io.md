@@ -1,6 +1,6 @@
 # 03: Vault note scanning and safe writing
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 **Runner:** any
 
