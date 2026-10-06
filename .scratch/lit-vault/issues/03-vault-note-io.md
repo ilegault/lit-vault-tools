@@ -1,6 +1,6 @@
 # 03: Vault note scanning and safe writing
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Runner:** any
 
@@ -21,11 +21,11 @@ Tests use a real temporary vault (`tmp_path`) with real `.md` files. Nothing is 
 
 ## Acceptance criteria
 
-- [ ] `scan_saved_notes` returns exactly the notes whose frontmatter has `type: paper`, found recursively, in sorted path order; it ignores `type: author` / `type: stub` notes, anything under `_explore/`, anything under a dot-directory such as `.obsidian/`, and non-`.md` files. The returned `ids.doi` is normalized (a note with `doi: https://doi.org/10.1016/ABC` yields `10.1016/abc`).
-- [ ] Files are read and written without newline translation: a CRLF note scanned and re-written with its own `text` is byte-identical on disk (compare bytes).
-- [ ] `write_note(path, text)` returns `False` and does not touch the file (assert `st_mtime_ns` unchanged) when `text` equals the current content; it returns `True` and the bytes on disk equal `text` when it differs.
-- [ ] The write is atomic and leaves no strays: after writing, the sorted directory listing of the vault equals the listing before (no temp files left), and a failure injected between the temp write and the replace (monkeypatch `os.replace` to raise) leaves the original file's bytes intact.
-- [ ] Scanning every note and re-writing each with its own text leaves the vault's file names, count and bytes unchanged: nothing is renamed, moved or deleted.
+- [x] `scan_saved_notes` returns exactly the notes whose frontmatter has `type: paper`, found recursively, in sorted path order; it ignores `type: author` / `type: stub` notes, anything under `_explore/`, anything under a dot-directory such as `.obsidian/`, and non-`.md` files. The returned `ids.doi` is normalized (a note with `doi: https://doi.org/10.1016/ABC` yields `10.1016/abc`).
+- [x] Files are read and written without newline translation: a CRLF note scanned and re-written with its own `text` is byte-identical on disk (compare bytes).
+- [x] `write_note(path, text)` returns `False` and does not touch the file (assert `st_mtime_ns` unchanged) when `text` equals the current content; it returns `True` and the bytes on disk equal `text` when it differs.
+- [x] The write is atomic and leaves no strays: after writing, the sorted directory listing of the vault equals the listing before (no temp files left), and a failure injected between the temp write and the replace (monkeypatch `os.replace` to raise) leaves the original file's bytes intact.
+- [x] Scanning every note and re-writing each with its own text leaves the vault's file names, count and bytes unchanged: nothing is renamed, moved or deleted.
 
 ## Gate
 
@@ -38,3 +38,5 @@ pytest -q
 CI (`.github/workflows/tests.yml`) runs exactly these, with `PYTHONUTF8=1` and bogus `OPENALEX_API_KEY` / `S2_API_KEY`. Zero failures before pushing.
 
 ## Comments
+
+2026-10-06: Added vault/notes.py (scan_saved_notes, write_note; temp file + os.replace, newline="" I/O, non-UTF-8 files skipped with a warning). tests/test_vault_notes.py covers each criterion on a real tmp vault; mutating newline handling turns the CRLF test red.
