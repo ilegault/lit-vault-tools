@@ -40,4 +40,4 @@ CI (`.github/workflows/tests.yml`) runs exactly these, with `PYTHONUTF8=1` and b
 ## Comments
 
 Done (2026-10-06): added `config.py`, `domain/doi.py`, `tests/test_config.py`, `tests/test_doi.py`.
-Criteria 1-3 (normalize, idempotence, find_paper matching) and 4 (no-match, all-None) are covered by `tests/test_doi.py`; criterion 5 by `tests/test_config.py`. Mutation check: disabling the all-None guard turned two tests red. No bench verification needed.
+Criteria 1-3 (normalize, idempotence, find_paper matching) and 4 (no-match, all-None) are covered by `tests/test_doi.py`; criterion 5 by `tests/test_config.py`. Mutation check: removing `.lower()` from `normalize_doi` turned the case-insensitivity tests red. No bench verification needed.
