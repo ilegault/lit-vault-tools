@@ -67,11 +67,14 @@ def _parse(raw: dict) -> PaperRecord:
     authors: list[tuple[AuthorRef, list[str]]] = []
     institutions: dict[str, InstitutionRef] = {}
     countries: list[str] = []
+    raw_names: dict[str, str] = {}
     for authorship in raw.get("authorships") or []:
         author = authorship["author"]
         raw_institutions = authorship.get("institutions") or []
         names = [i.get("display_name") for i in raw_institutions]
         authors.append((AuthorRef(_id(author["id"]), author.get("display_name")), names))
+        if authorship.get("raw_author_name"):
+            raw_names.setdefault(_id(author["id"]), authorship["raw_author_name"])
         for institution in raw_institutions:
             institution_id = _id(institution["id"])
             institutions.setdefault(
@@ -87,7 +90,9 @@ def _parse(raw: dict) -> PaperRecord:
         for country in authorship.get("countries") or []:
             if country not in countries:
                 countries.append(country)
-    subfield = ((raw.get("primary_topic") or {}).get("subfield") or {}).get("display_name")
+    raw_subfield = (raw.get("primary_topic") or {}).get("subfield") or {}
+    subfield = raw_subfield.get("display_name")
+    subfield_id = raw_subfield["id"].rsplit("/", 1)[-1] if raw_subfield.get("id") else None
     return PaperRecord(
         openalex_id=_id(raw["id"]),
         doi=normalize_doi(raw.get("doi")),
@@ -97,4 +102,6 @@ def _parse(raw: dict) -> PaperRecord:
         countries=countries,
         subfield=subfield,
         references=[_id(r) for r in raw.get("referenced_works") or []],
+        subfield_id=subfield_id,
+        author_raw_names=raw_names,
     )

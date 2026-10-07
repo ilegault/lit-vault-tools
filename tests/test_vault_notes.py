@@ -127,3 +127,18 @@ def test_scan_then_rewrite_each_note_changes_nothing(tmp_path):
     for note in scan_saved_notes(tmp_path):
         assert write_note(note.path, note.text) is False
     assert snapshot(tmp_path) == before
+
+
+def test_scan_entity_notes_finds_by_id_not_filename(tmp_path):
+    from lit_vault_tools.vault.notes import scan_entity_notes
+
+    make(tmp_path, "Authors/Renamed by hand.md", b'---\ntype: author\nopenalex_id: "A1"\n---\nmine\n')
+    make(tmp_path, "Authors/sub/Other.md", b"---\ntype: author\nopenalex_id: A2\n---\n")
+    make(tmp_path, "Authors/Mine.md", b"---\ntype: author\n---\nno id\n")
+    make(tmp_path, "Elsewhere/Ignored.md", b'---\nopenalex_id: "A3"\n---\n')
+    index = scan_entity_notes(tmp_path, "Authors")
+    authors = tmp_path / "Authors"
+    assert index.by_id == {"A1": authors / "Renamed by hand.md", "A2": authors / "sub" / "Other.md"}
+    assert index.unidentified == {"Mine"}
+    assert {"renamed by hand", "other", "mine"} <= index.stems
+    assert scan_entity_notes(tmp_path, "Missing").by_id == {}
