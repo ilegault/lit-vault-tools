@@ -1,6 +1,6 @@
 # 16: lit-vault explore: stubs and _focus.md for one focus paper
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 **Runner:** any
 
