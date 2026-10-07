@@ -1,6 +1,6 @@
 # 17: Explore trail and stubs as focus
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 **Runner:** any
 
