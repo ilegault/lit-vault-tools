@@ -1,6 +1,6 @@
 # 15: Semantic Scholar client: paged neighbors and batch details
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 **Runner:** any
 
