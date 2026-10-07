@@ -293,50 +293,54 @@ someone else's bug fix smuggled into it cannot be reviewed.
 <!-- ACTIVE-PLAN:START -->
 ## Active implementation plan
 
-_Written by the planning model on 2026-10-06 14:33. Implement this. If something in it is wrong, say so before changing course._
+_Written by the planning model on 2026-10-07 00:57. Implement this. If something in it is wrong, say so before changing course._
 
 # Plan: lit-vault-tools v1 (enrich + explore)
 
 This is a pointer, not the work.
 
-- **Spec:** `CONTEXT.md` (no separate spec.md). Decisions 12-16 (round 3) were added while ticketing.
+- **Spec:** `CONTEXT.md` (no separate spec.md). Decisions 12-16 (round 3) were added while ticketing; decision 12 was amended and 17-18 added on 2026-10-06 after the real fixtures were captured.
 - **Binding:** `docs/adr/0001-tests-first.md`; AGENTS.md layers and invariants.
-- **Tickets:** `.scratch/lit-vault/issues/01-*.md` through `19-*.md`. Conventions: `docs/agents/issue-tracker.md`.
-- **New / changed terms:** institution notes use `type: institution` and `institution_type`; HTTP via stdlib `urllib` behind an injectable `Transport`; geo cache outside the vault (`LIT_VAULT_CACHE_DIR`); temporary links live only in `_explore/_focus.md`.
+- **Tickets:** `.scratch/lit-vault/issues/01-*.md` through `22-*.md`. Conventions: `docs/agents/issue-tracker.md`.
+- **New / changed terms:** institution notes use `type: institution` and `institution_type`; HTTP via stdlib **`http.client`** (not `urllib`, which breaks the case-sensitive `x-api-key` header) behind an injectable `Transport`; `ReferencesHidden` = Semantic Scholar answered a references page with `"data": null` (publisher hid them); reference fallback = Crossref reference DOIs looked up via S2 `/paper/batch`; geo cache outside the vault (`LIT_VAULT_CACHE_DIR`); temporary links live only in `_explore/_focus.md`.
 
 ## Next
 
-Unblocked now: **01** (agent) and **05** (developer: capture real API fixtures, `ready-for-developer`, never claim it).
-Start **01**: it gates 04, 13 and (via 02) most of the rest. 02 and 04 can run in parallel after 01.
+01-05, 13 and 14 are done; real fixtures are in `tests/fixtures/`.
+Start **06** (agent): it builds the shared `http.client` transport and gates 07, 08, 09 and 15.
+**20** is `ready-for-developer` (capture `s2_batch_by_doi.json` with the live key). Never claim it; 21 waits on it.
 
 ## Dependency graph
 
 ```
-01 -> 02 -> 03
-01 -> 04
-05 (developer) -> 06 (also needs 04) -> 07, 08
+01 -> 02 -> 03                                  (done)
+01 -> 04                                        (done)
+05 (developer, done) -> 06 (also needs 04) -> 07, 08
 02,03,06 -> 09 -> 10 (also 04, 07)
 08,09,15 -> 11
 09 -> 12
-01,04 -> 13 -> 14 (also 02)
+01,04 -> 13 -> 14 (also 02)                     (done)
 05,06,13 -> 15 -> 16 (also 03, 14) -> 17, 18
 09,16 -> 19
+20 (developer: capture fixture) + 15 -> 21
+08,16,21 -> 22
 ```
 
-Tickets needing real fixtures (06, 07, 08, 15) cannot start until 05 is `done`.
+17, 18 and 22 all extend `commands/explore.py`; expect to rebase on whichever lands first.
 
 ## Requirements to treat as binding, not preferences
 
-- No runtime dependencies: no YAML library, no `requests`. Frontmatter is edited line-wise so non-owned lines and the body stay byte-identical.
+- No runtime dependencies: no YAML library, no `requests`. HTTP is `http.client`; never `urllib` (header case). Frontmatter is edited line-wise so non-owned lines and the body stay byte-identical.
 - A saved paper note's body is never touched; nothing outside `_explore/` is ever deleted; notes are never renamed.
 - Match by DOI / `openalex_id` / `s2_id`, never by filename. Never write `location: 0,0`.
 - Idempotent: second run is byte-identical and `enriched_on` moves only when a value changed.
 - Explore fetches everything before wiping `_explore/`; a failed fetch leaves `_explore/` untouched.
-- Never use real keys, the live APIs, or a real vault. Fixtures are real captured responses (ticket 05).
+- A hidden reference list (`"data": null`) is `ReferencesHidden`, never an empty list.
+- Never use real keys, the live APIs, or a real vault. Fixtures are real captured responses (tickets 05, 20); never invent a response shape.
 
 ## Deliberately not in this set
 
-Unpaywall, TDS extraction, any watcher or auto-run, permanent storage of unsaved papers, the Obsidian manual setup checklist (CONTEXT.md), and `.env` handling beyond `KEY=VALUE` lines.
+Unpaywall, TDS extraction, any watcher or auto-run, permanent storage of unsaved papers, the Obsidian manual setup checklist (CONTEXT.md), `.env` handling beyond `KEY=VALUE` lines, and an OpenAlex-based reference fallback (Crossref is the fallback; OpenAlex reference IDs would need extra lookups).
 <!-- ACTIVE-PLAN:END -->
 
 ## Implementation Protocol

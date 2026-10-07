@@ -41,9 +41,9 @@ The script never renames, moves or deletes saved paper notes. Its only deletions
 
 ## Data sources — decisions and why
 
-- **Semantic Scholar — primary for Explore.** `/paper/DOI:<doi>/references` and `/citations` return titles, authors, year, abstract, tldr, citationCount, externalIds (DOI), isInfluential, contexts, intents — everything a stub needs in one paginated call (`offset`/`limit`, max 1000; `next` absent on the last page; 10 MB response cap — keep the bulk field set lean). Free key → 1 req/s.
+- **Semantic Scholar — primary for Explore.** `/paper/DOI:<doi>/references` and `/citations` return titles, authors, year, abstract, tldr, citationCount, externalIds (DOI), isInfluential, contexts, intents — everything a stub needs in one paginated call (`offset`/`limit`, max 1000; `next` absent on the last page; 10 MB response cap — keep the bulk field set lean). Free key → 1 req/s. **Hidden references (confirmed 2026-10-06):** for many paywalled papers (seen on Acta Materialia and J. Mater. Res. papers) the publisher has Semantic Scholar hide the reference list: `/references` answers 200 with `"data": null` and a disclaimer that `references` were elided. Open-access papers (e.g. Materials & Design) are visible; citations are unaffected. Explore then falls back to Crossref (decision 17). The key header `x-api-key` is case-sensitive.
 - **OpenAlex — primary for Enrich.** Authors (with OpenAlex author IDs), institutions (ROR, country), subfield, open-access status, reference list (IDs). Institution coordinates need a second, cached lookup per institution (confirmed: the work's institution objects are dehydrated). CC0, so responses can be test fixtures. Free key.
-- **Crossref — fallback** when OpenAlex has no record for a DOI. Email in the polite pool.
+- **Crossref — fallback** when OpenAlex has no record for a DOI. Email in the polite pool. Also the source of reference DOIs for Explore when Semantic Scholar hides a paper's references (decision 17).
 - **OSTI.gov — fallback for no-DOI items** (DOE technical reports).
 - **Unpaywall — not used.** **TDS extraction pipeline — out of scope**, kept fully separate.
 
@@ -115,6 +115,8 @@ Stub size stays bounded: at most one focus paper's neighbours (plus the trail's 
 3. Breadcrumbs custom edge fields must be registered manually once.
 4. Zotero Integration overwrites the whole note on re-import, no merge — hence persist blocks + re-run `enrich`.
 5. Semantic Scholar endpoints and fields as listed above, verified against the real `swagger.json`; `DOI:<doi>` is a valid paper ID.
+6. Semantic Scholar's API key header is `x-api-key`, case-sensitive (stated in its API docs; confirmed when urllib's re-capitalised header was ignored).
+7. Semantic Scholar hides references for many paywalled papers (`"data": null` on `/references`); OpenAlex and Crossref still list them (checked on one Acta Materialia paper: 106 and 100 references). Real response saved as `tests/fixtures/s2_references_elided.json`.
 
 ## Decisions — confirmed by Isaac
 
@@ -129,11 +131,13 @@ Stub size stays bounded: at most one focus paper's neighbours (plus the trail's 
 9. (Round 2) Explore view centers on the open paper; the global graph shows saved papers only.
 10. (Round 2) Explore keeps a short trail: last 3 foci, configurable.
 11. (Round 2) Cap of 200 stubs per list per pass, ranked influential-first then by citation count, with "load more".
-12. (Round 3) HTTP uses the Python standard library (`urllib`) behind an injectable transport function, so the project adds no runtime dependency and tests pass a fake transport that replays saved responses.
+12. (Round 3, amended 2026-10-06) HTTP uses the Python standard library `http.client` behind an injectable transport function, so the project adds no runtime dependency and tests pass a fake transport that replays saved responses. **Not `urllib`:** it re-capitalises header names, and Semantic Scholar's `x-api-key` header is case-sensitive, so urllib silently sends every request unauthenticated (found while capturing fixtures: constant 429s that PowerShell, which keeps header case, did not get).
 13. (Round 3) The institution geo cache is a JSON file outside the vault, so it never syncs to the phone: `%LOCALAPPDATA%\lit-vault-tools\institutions.json` on Windows, else `$XDG_CACHE_HOME/lit-vault-tools/` or `~/.cache/lit-vault-tools/`. Overridable by an `LIT_VAULT_CACHE_DIR` environment variable (tests use this).
 14. (Round 3) Temporary links to stubs live only in `_explore/_focus.md`, never in a saved note.
 15. (Round 3) Real API responses must be captured into `tests/fixtures/` by the developer (needs the live keys) before any client ticket starts; agents never invent response shapes.
 16. (Round 3) Institution notes carry `type: institution`; OpenAlex's institution type is stored as `institution_type`.
+17. (2026-10-06) **Reference fallback.** When Semantic Scholar hides a focus paper's references, Explore takes the reference DOIs from Crossref and looks them up with Semantic Scholar's `/paper/batch` (`DOI:` ids, lean fields). Ranking, cap, stubs and load-more work as usual; `isInfluential` is unknown for these, so it is false and ranking falls back to citation count. `_focus.md` says the references came from Crossref and how many DOIs were found. References without a DOI, or unknown to Semantic Scholar, are skipped. If Crossref has nothing either, the references list is empty with a note; citations still show.
+18. (2026-10-06) **Semantic Scholar rate limit.** The client spaces requests by `config.S2_MIN_INTERVAL_S` (1.5 s; the nominal 1 req/s proved tight in practice) and retries a 429 with exponential backoff (5, 10, 20, 40 s) before failing.
 
 ## Manual setup checklist (once, before first run)
 
