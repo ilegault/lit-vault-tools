@@ -1,6 +1,6 @@
 # 17: Explore trail and stubs as focus
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Runner:** any
 
@@ -21,11 +21,11 @@ Tests: temporary vault; fake S2 transport that returns different replicated neig
 
 ## Acceptance criteria
 
-- [ ] Exploring saved note A, then stub B (from A's results), then stub C, then stub D yields `_trail.md` listing D, C, B newest first as links, with A's real note untouched; with `trail_length=3` and four foci the fourth drops the oldest.
-- [ ] Dropping the oldest focus deletes it only if it is a stub inside `_explore/`: a stub focus pushed out of the trail is deleted from `_explore/`, a saved note pushed out is still on disk byte-identical.
-- [ ] Trail foci that are stubs survive each wipe (their file bytes unchanged) while the previous focus's other neighbor stubs are deleted.
-- [ ] Exploring a note already in the trail moves it to the front without a duplicate entry and re-fetches its neighbors (the fake transport records the request).
-- [ ] Exploring a stub path resolves the paper by its `s2_id` (the fake transport sees `/paper/<s2_id>/references`), and `_focus.md` `focus:` links to that stub's stem.
+- [x] Exploring saved note A, then stub B (from A's results), then stub C, then stub D yields `_trail.md` listing D, C, B newest first as links, with A's real note untouched; with `trail_length=3` and four foci the fourth drops the oldest.
+- [x] Dropping the oldest focus deletes it only if it is a stub inside `_explore/`: a stub focus pushed out of the trail is deleted from `_explore/`, a saved note pushed out is still on disk byte-identical.
+- [x] Trail foci that are stubs survive each wipe (their file bytes unchanged) while the previous focus's other neighbor stubs are deleted.
+- [x] Exploring a note already in the trail moves it to the front without a duplicate entry and re-fetches its neighbors (the fake transport records the request).
+- [x] Exploring a stub path resolves the paper by its `s2_id` (the fake transport sees `/paper/<s2_id>/references`), and `_focus.md` `focus:` links to that stub's stem.
 
 ## Gate
 
@@ -38,3 +38,5 @@ pytest -q
 CI (`.github/workflows/tests.yml`) runs exactly these, with `PYTHONUTF8=1` and bogus `OPENALEX_API_KEY` / `S2_API_KEY`. Zero failures before pushing.
 
 ## Comments
+
+2026-10-06: Added the trail to `commands/explore.py` (`_explore/_trail.md`, `trail_length`, stub foci resolved by s2_id, trail stubs preserved by `wipe_explore(keep=...)`, a neighbour that is already a trail stub is linked not duplicated). All five criteria covered by `tests/test_explore_trail.py`. Existing ticket-16 tests were updated only to exclude the new `_trail.md` from their stub counts; what they assert about stubs is unchanged. Mutation checks: ignoring `keep`, and not de-duplicating a re-explored focus, each turn tests red.

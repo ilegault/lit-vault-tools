@@ -116,7 +116,7 @@ def test_cap_ranking_focus_file_and_details_for_selected_only(tmp_path):
     summary = run_explore(vault, focus, "k", upstream, pacer=pacer())
     assert summary.ok
     explore = vault / "_explore"
-    stub_files = [p for p in explore.glob("*.md") if p.name != "_focus.md"]
+    stub_files = [p for p in explore.glob("*.md") if p.name not in ("_focus.md", "_trail.md")]
     stubs = {p: read_stub_ids(p.read_text(encoding="utf-8")).s2_id for p in stub_files}
     assert len(stubs) == STUB_CAP_PER_LIST + 3
     assert sum(1 for i in stubs.values() if i.startswith("R")) == 200
@@ -204,7 +204,7 @@ def test_main_success_exit_code_0(tmp_path, monkeypatch):
     monkeypatch.setenv("S2_API_KEY", "k")
     upstream = Upstream([item("citedPaper", "R", 1)], [item("citingPaper", "C", 1)])
     assert main(["explore", "--vault", str(vault), str(focus)], transport=upstream, sleep=lambda s: None) == 0
-    assert len(list((vault / "_explore").glob("*.md"))) == 3
+    assert len(list((vault / "_explore").glob("*.md"))) == 2 + 2  # two stubs, _focus.md and _trail.md
 
 
 def test_focus_note_without_doi_exits_1_and_changes_nothing(tmp_path, monkeypatch, capsys):
