@@ -47,6 +47,7 @@ def build_parser() -> argparse.ArgumentParser:
     explore = commands.add_parser("explore", help="write temporary stubs for one paper's references and citations")
     explore.add_argument("--vault", default=None, help="vault directory (default: $LIT_VAULT_DIR)")
     explore.add_argument("note", help="the focus paper note")
+    explore.add_argument("--more", action="store_true", help="add the next batch of stubs without wiping")
     return parser
 
 
@@ -144,7 +145,9 @@ def _explore(
     vault = _vault(args) if api_key else None
     if not api_key or vault is None:
         return 2
-    summary = run_explore(vault, _resolve_note(args.note, vault), api_key, transport, sleep=sleep, clock=clock)
+    summary = run_explore(
+        vault, _resolve_note(args.note, vault), api_key, transport, sleep=sleep, clock=clock, more=args.more
+    )
     if not summary.ok:
         print(f"error: {summary.message}", file=sys.stderr)
         return 1
