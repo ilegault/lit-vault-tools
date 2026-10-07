@@ -1,6 +1,6 @@
 # 18: Explore: --more adds the next 200 without wiping
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 **Runner:** any
 
