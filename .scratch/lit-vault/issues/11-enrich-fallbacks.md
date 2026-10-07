@@ -1,6 +1,6 @@
 # 11: Enrich: Crossref/OSTI fallbacks and s2_id
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 **Runner:** any
 
