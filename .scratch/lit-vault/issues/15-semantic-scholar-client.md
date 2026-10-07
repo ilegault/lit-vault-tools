@@ -15,17 +15,20 @@
 
 Create `src/lit_vault_tools/clients/semantic_scholar.py` returning `Neighbor` values from `domain/neighbors.py`. API key goes where `tests/fixtures/README.md` records it (header `x-api-key`).
 
-Functions: `fetch_s2_paper_id(doi, api_key, transport)`; `fetch_neighbors(paper_ref, relation, api_key, transport, sleep, clock)` which pages `/paper/<ref>/references` or `/citations` (`paper_ref` is `DOI:<doi>` or an `s2_id`) with the lean field set and `limit=1000`, following `offset` until `next` is absent; `fetch_details(s2_ids, api_key, transport, sleep, clock)` which POSTs `/paper/batch` in chunks of at most 500 ids for abstract, tldr, authors and venue. Requests are spaced at least 1 second apart using the injected `sleep` / `clock`. 404 and other non-success statuses raise `ClientError`; no retries.
+Functions: `fetch_s2_paper_id(doi, api_key, transport)`; `fetch_neighbors(paper_ref, relation, api_key, transport, sleep, clock)` which pages `/paper/<ref>/references` or `/citations` (`paper_ref` is `DOI:<doi>` or an `s2_id`) with the lean field set and `limit=1000`, following `offset` until `next` is absent; `fetch_details(s2_ids, api_key, transport, sleep, clock)` which POSTs `/paper/batch` in chunks of at most 500 ids for abstract, tldr, authors and venue. Add `S2_MIN_INTERVAL_S = 1.5` and `S2_BACKOFF_S = (5, 10, 20, 40)` to `config.py`. Requests are spaced at least `S2_MIN_INTERVAL_S` apart using the injected `sleep` / `clock`. A 429 is retried after waiting each value of `S2_BACKOFF_S` in turn (via the injected `sleep`), then raises `ClientError(429)`. 404 and other non-success statuses raise `ClientError` at once, no retry.
 
-Tests fake only the transport, replaying `s2_paper.json`, `s2_references_page1.json`, `s2_references_last.json`, `s2_citations_page1.json`, `s2_batch.json`. Read the fixtures for field paths (note references nest under `citedPaper`, citations under `citingPaper`).
+**Hidden references.** For many paywalled papers the publisher has Semantic Scholar hide the reference list: `/references` answers 200 with `"data": null` (see `tests/fixtures/s2_references_elided.json`). `fetch_neighbors` must then raise `ReferencesHidden`, a new exception in this module that is **not** a `ClientError`, so Explore can fall back (ticket 22) instead of showing an empty list.
+
+Tests fake only the transport, replaying `s2_paper.json`, `s2_references_page1.json`, `s2_references_last.json`, `s2_citations_page1.json`, `s2_batch.json`, `s2_references_elided.json`. Read the fixtures for field paths (note references nest under `citedPaper`, citations under `citingPaper`).
 
 ## Acceptance criteria
 
 - [ ] `fetch_neighbors(..., "reference", ...)` follows `next`: the fake transport serves page 1 then the last page; the result contains every item of both fixtures in order as `Neighbor`s with `relation == "reference"`, the lean fields from the fixture (`s2_id`, `title`, `year`, `citation_count`, `is_influential`, normalized `doi`), and `abstract`/`tldr` `None`. The second request uses the `offset` from the first response's `next`.
 - [ ] The lean request asks for no abstract or tldr field and `limit=1000`; the test asserts the `fields` query value contains neither `abstract` nor `tldr`. `relation="citation"` reads `citingPaper` entries from `s2_citations_page1.json`.
 - [ ] `fetch_details` with 1,203 fake ids issues three POSTs of 500, 500 and 203 ids, and returns a mapping `s2_id -> (abstract, tldr, authors, venue)` taken from `s2_batch.json` (replicate its entries under new ids to reach the count); ids the batch returns as `null` are absent from the mapping.
-- [ ] Rate spacing: with a fake clock and fake `sleep`, three consecutive requests sleep so that no two requests start less than 1.0 second apart; the key never appears in a `ClientError` message or any log record.
-- [ ] `fetch_s2_paper_id` returns the id in `s2_paper.json`; a 404 returns `None`; a 429 raises `ClientError` with status 429.
+- [ ] Rate spacing: with a fake clock and fake `sleep`, three consecutive requests sleep so that no two requests start less than `config.S2_MIN_INTERVAL_S` apart; the key never appears in a `ClientError` message or any log record.
+- [ ] `fetch_s2_paper_id` returns the id in `s2_paper.json`; a 404 returns `None`. A transport that answers 429 twice then replays `s2_paper.json` returns the id, and the fake `sleep` recorded the backoff waits 5 and 10; a transport that always answers 429 raises `ClientError` with status 429 after exactly 5 requests.
+- [ ] Replaying `s2_references_elided.json` for `relation="reference"` raises `ReferencesHidden` (assert the type and that it is not an instance of `ClientError`); a page whose `data` is `[]` returns an empty list instead of raising.
 
 ## Gate
 

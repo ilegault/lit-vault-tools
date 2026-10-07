@@ -24,6 +24,7 @@ Tests fake only the transport, replaying `crossref_work.json` and `osti_record.j
 - [ ] `crossref.fetch_work` with the fixture returns `reference_dois` equal to the fixture's `reference[].DOI` values, normalized, in order, excluding entries that lack a DOI, and `doi` equal to the normalized fixture DOI.
 - [ ] `crossref.fetch_work` sends the `mailto` exactly where `tests/fixtures/README.md` records it; a 404 returns `None`; 429/500 raise `ClientError`.
 - [ ] `osti.fetch_by_title` with the fixture returns a record whose `doi` equals the fixture's DOI normalized (or `None` when the fixture has none), and returns `None` when the transport returns an empty result list (use a copy of the fixture with the list emptied).
+- [ ] `crossref.fetch_work` with `mailto=""` sends no `mailto` parameter at all (the test asserts the requested URL contains no `mailto=`), so Explore can call it when `CROSSREF_MAILTO` is unset.
 - [ ] Neither client's `ClientError` message nor any log record contains the `mailto` value used in the test.
 
 ## Gate
