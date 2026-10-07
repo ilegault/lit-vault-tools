@@ -1,6 +1,6 @@
 # 06: OpenAlex client: one work by DOI as plain data
 
-**Status:** in-progress
+**Status:** done
 
 **Runner:** any
 
@@ -21,12 +21,12 @@ Build the request exactly as recorded in `tests/fixtures/README.md`. Tests fake 
 
 ## Acceptance criteria
 
-- [ ] With the fixture replayed, `fetch_work` returns a `PaperRecord` whose `openalex_id` equals the fixture's `id` minus the URL prefix, whose `doi` equals `normalize_doi` of the fixture's `doi`, whose `oa_status` equals the fixture's open-access status, and whose `references` equals the fixture's `referenced_works` ids in order.
-- [ ] `authors` has one entry per fixture authorship, in order, each with the author's OpenAlex id (prefix stripped) and display name; `institutions` and `countries` are the de-duplicated union over all authorships, in first-seen order, with `ror` and country code taken from the fixture.
-- [ ] A transport returning status 404 makes `fetch_work` return `None`; status 429 and 500 raise `ClientError` carrying the status.
-- [ ] The recorded request is what is sent: the test asserts the method, URL (minus the key) and key placement equal those in `tests/fixtures/README.md`. The `ClientError` message and every log record (`caplog`, all levels) never contain the key string used in the test.
-- [ ] `stdlib_transport` is exercised against a local `http.server` started in the test on `127.0.0.1` (not the internet): a 200 returns status and body bytes, a 404 returns status 404 without raising, a POST body arrives byte-identical, and a 302 with a `Location` header is followed to that URL.
-- [ ] Header case is preserved: the local server's handler records the raw request header names (`list(self.headers.keys())`) and the test asserts the exact, case-sensitive string `x-api-key` is among them when the transport is called with `{"x-api-key": "<test key>"}`. (This fails on `urllib`; that is the point of the test.)
+- [x] With the fixture replayed, `fetch_work` returns a `PaperRecord` whose `openalex_id` equals the fixture's `id` minus the URL prefix, whose `doi` equals `normalize_doi` of the fixture's `doi`, whose `oa_status` equals the fixture's open-access status, and whose `references` equals the fixture's `referenced_works` ids in order.
+- [x] `authors` has one entry per fixture authorship, in order, each with the author's OpenAlex id (prefix stripped) and display name; `institutions` and `countries` are the de-duplicated union over all authorships, in first-seen order, with `ror` and country code taken from the fixture.
+- [x] A transport returning status 404 makes `fetch_work` return `None`; status 429 and 500 raise `ClientError` carrying the status.
+- [x] The recorded request is what is sent: the test asserts the method, URL (minus the key) and key placement equal those in `tests/fixtures/README.md`. The `ClientError` message and every log record (`caplog`, all levels) never contain the key string used in the test.
+- [x] `stdlib_transport` is exercised against a local `http.server` started in the test on `127.0.0.1` (not the internet): a 200 returns status and body bytes, a 404 returns status 404 without raising, a POST body arrives byte-identical, and a 302 with a `Location` header is followed to that URL.
+- [x] Header case is preserved: the local server's handler records the raw request header names (`list(self.headers.keys())`) and the test asserts the exact, case-sensitive string `x-api-key` is among them when the transport is called with `{"x-api-key": "<test key>"}`. (This fails on `urllib`; that is the point of the test.)
 
 ## Gate
 
@@ -39,3 +39,5 @@ pytest -q
 CI (`.github/workflows/tests.yml`) runs exactly these, with `PYTHONUTF8=1` and bogus `OPENALEX_API_KEY` / `S2_API_KEY`. Zero failures before pushing.
 
 ## Comments
+
+2026-10-06: Added `clients/http.py` (Transport, HttpResponse, ClientError with api_key redaction, `http.client` stdlib_transport with bounded redirects), `domain/paper_record.py`, `clients/openalex.py` (`fetch_work`). Criteria 1-4, 7 covered by `tests/test_openalex_client.py` (fixture replay, 404/429/500, request shape, key never in errors/logs); criteria 5-6 by `tests/test_http_transport.py` (local http.server: 200/404/POST/302/`x-api-key` case). Mutation check: capitalising headers turns the case test red.
