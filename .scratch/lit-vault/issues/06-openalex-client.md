@@ -1,6 +1,6 @@
 # 06: OpenAlex client: one work by DOI as plain data
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 **Runner:** any
 
