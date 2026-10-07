@@ -1,6 +1,6 @@
 # 12: Enrich: refs and cited_by between saved papers
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 **Runner:** any
 
