@@ -1,6 +1,6 @@
 # 15: Semantic Scholar client: paged neighbors and batch details
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Runner:** any
 
@@ -23,12 +23,12 @@ Tests fake only the transport, replaying `s2_paper.json`, `s2_references_page1.j
 
 ## Acceptance criteria
 
-- [ ] `fetch_neighbors(..., "reference", ...)` follows `next`: the fake transport serves page 1 then the last page; the result contains every item of both fixtures in order as `Neighbor`s with `relation == "reference"`, the lean fields from the fixture (`s2_id`, `title`, `year`, `citation_count`, `is_influential`, normalized `doi`), and `abstract`/`tldr` `None`. The second request uses the `offset` from the first response's `next`.
-- [ ] The lean request asks for no abstract or tldr field and `limit=1000`; the test asserts the `fields` query value contains neither `abstract` nor `tldr`. `relation="citation"` reads `citingPaper` entries from `s2_citations_page1.json`.
-- [ ] `fetch_details` with 1,203 fake ids issues three POSTs of 500, 500 and 203 ids, and returns a mapping `s2_id -> (abstract, tldr, authors, venue)` taken from `s2_batch.json` (replicate its entries under new ids to reach the count); ids the batch returns as `null` are absent from the mapping.
-- [ ] Rate spacing: with a fake clock and fake `sleep`, three consecutive requests sleep so that no two requests start less than `config.S2_MIN_INTERVAL_S` apart; the key never appears in a `ClientError` message or any log record.
-- [ ] `fetch_s2_paper_id` returns the id in `s2_paper.json`; a 404 returns `None`. A transport that answers 429 twice then replays `s2_paper.json` returns the id, and the fake `sleep` recorded the backoff waits 5 and 10; a transport that always answers 429 raises `ClientError` with status 429 after exactly 5 requests.
-- [ ] Replaying `s2_references_elided.json` for `relation="reference"` raises `ReferencesHidden` (assert the type and that it is not an instance of `ClientError`); a page whose `data` is `[]` returns an empty list instead of raising.
+- [x] `fetch_neighbors(..., "reference", ...)` follows `next`: the fake transport serves page 1 then the last page; the result contains every item of both fixtures in order as `Neighbor`s with `relation == "reference"`, the lean fields from the fixture (`s2_id`, `title`, `year`, `citation_count`, `is_influential`, normalized `doi`), and `abstract`/`tldr` `None`. The second request uses the `offset` from the first response's `next`.
+- [x] The lean request asks for no abstract or tldr field and `limit=1000`; the test asserts the `fields` query value contains neither `abstract` nor `tldr`. `relation="citation"` reads `citingPaper` entries from `s2_citations_page1.json`.
+- [x] `fetch_details` with 1,203 fake ids issues three POSTs of 500, 500 and 203 ids, and returns a mapping `s2_id -> (abstract, tldr, authors, venue)` taken from `s2_batch.json` (replicate its entries under new ids to reach the count); ids the batch returns as `null` are absent from the mapping.
+- [x] Rate spacing: with a fake clock and fake `sleep`, three consecutive requests sleep so that no two requests start less than `config.S2_MIN_INTERVAL_S` apart; the key never appears in a `ClientError` message or any log record.
+- [x] `fetch_s2_paper_id` returns the id in `s2_paper.json`; a 404 returns `None`. A transport that answers 429 twice then replays `s2_paper.json` returns the id, and the fake `sleep` recorded the backoff waits 5 and 10; a transport that always answers 429 raises `ClientError` with status 429 after exactly 5 requests.
+- [x] Replaying `s2_references_elided.json` for `relation="reference"` raises `ReferencesHidden` (assert the type and that it is not an instance of `ClientError`); a page whose `data` is `[]` returns an empty list instead of raising.
 
 ## Gate
 
@@ -41,3 +41,5 @@ pytest -q
 CI (`.github/workflows/tests.yml`) runs exactly these, with `PYTHONUTF8=1` and bogus `OPENALEX_API_KEY` / `S2_API_KEY`. Zero failures before pushing.
 
 ## Comments
+
+2026-10-06: Added `clients/semantic_scholar.py` (fetch_s2_paper_id, fetch_neighbors, fetch_details, ReferencesHidden, Details, Pacer) and S2 constants in config. All six criteria covered by `tests/test_semantic_scholar_client.py`. Design note for ticket 16: request spacing across calls needs ONE shared `Pacer` passed as `pacer=` to every call (each call otherwise gets its own, which only spaces its own pages). Neighbors with a null paperId are skipped. The real batch fixture has null tldr/abstract, so the tldr text extraction is tested with the documented {model, text} shape. Mutation checks: hidden refs as empty, no spacing, ignoring `next` each turn tests red.
