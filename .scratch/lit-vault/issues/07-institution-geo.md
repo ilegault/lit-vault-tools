@@ -1,6 +1,6 @@
 # 07: Cached institution coordinate lookup
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 **Runner:** any
 
