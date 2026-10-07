@@ -1,6 +1,6 @@
 # 18: Explore: --more adds the next 200 without wiping
 
-**Status:** in-progress
+**Status:** done
 
 **Runner:** any
 
@@ -21,11 +21,11 @@ Tests: temporary vault; fake S2 transport with replicated lists of 450 reference
 
 ## Acceptance criteria
 
-- [ ] After `explore` then `explore --more`, `_explore/` holds 400 reference stubs (the ranked top 400, no duplicates) and the same 3 citation stubs; `_focus.md` says `showing 400 of 450 references` and lists all 400 in rank order.
-- [ ] Every stub file that existed before `--more` is byte-identical afterwards (compare hashes), and `_trail.md` is byte-identical.
-- [ ] A third `--more` writes the remaining 50 and says `showing 450 of 450 references`; a fourth writes nothing and changes no file bytes.
-- [ ] `--more` for a note other than the current focus exits 1, prints a message, and leaves the vault tree identical.
-- [ ] A failed fetch during `--more` (`ClientError`) leaves every existing file byte-identical and exits 1.
+- [x] After `explore` then `explore --more`, `_explore/` holds 400 reference stubs (the ranked top 400, no duplicates) and the same 3 citation stubs; `_focus.md` says `showing 400 of 450 references` and lists all 400 in rank order.
+- [x] Every stub file that existed before `--more` is byte-identical afterwards (compare hashes), and `_trail.md` is byte-identical.
+- [x] A third `--more` writes the remaining 50 and says `showing 450 of 450 references`; a fourth writes nothing and changes no file bytes.
+- [x] `--more` for a note other than the current focus exits 1, prints a message, and leaves the vault tree identical.
+- [x] A failed fetch during `--more` (`ClientError`) leaves every existing file byte-identical and exits 1.
 
 ## Gate
 
@@ -38,3 +38,5 @@ pytest -q
 CI (`.github/workflows/tests.yml`) runs exactly these, with `PYTHONUTF8=1` and bogus `OPENALEX_API_KEY` / `S2_API_KEY`. Zero failures before pushing.
 
 ## Comments
+
+2026-10-06: Added `more=True` to `run_explore` and `--more` to the CLI. It re-ranks, writes the next 200 per list whose s2_id is not already a stub, rewrites `_focus.md`, and never wipes or touches existing stubs or `_trail.md`; it exits 1 without changes for a note that is not the current focus (or when there is no `_focus.md`). A paper in both lists gets one stub. All five criteria covered by `tests/test_explore_more.py`. Mutation checks: wiping during --more, and re-selecting the top slice ignoring existing stubs, each turn tests red.

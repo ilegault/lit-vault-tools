@@ -20,6 +20,15 @@ obvious when there is more.
 References the publisher has hidden (`ReferencesHidden`) are reported as hidden,
 never shown as an empty list. The Crossref fallback for that case is ticket 22.
 
+Load more (`more=True`)
+-----------------------
+Re-fetches and re-ranks the same focus, then writes the next `STUB_CAP_PER_LIST`
+ranked neighbours per list whose `s2_id` is not already a stub in `_explore/`, and
+rewrites `_focus.md` with the longer lists. It never wipes and never rewrites an
+existing stub or `_trail.md`. It only applies to the current focus (the `focus:`
+line of `_focus.md`); anything else fails without touching the vault. A neighbour
+in both lists gets one stub, linked from both.
+
 The trail (CONTEXT.md, Stub lifecycle 5)
 ----------------------------------------
 `_explore/_trail.md` lists the last `trail_length` foci, newest first, as an ordered
@@ -89,6 +98,7 @@ def run_explore(
     clock=None,
     pacer: Pacer | None = None,
     trail_length: int = TRAIL_LENGTH,
+    more: bool = False,
 ) -> ExploreSummary:
     """Explore `focus_note`; on any failure nothing in the vault changes."""
     vault, focus_note = Path(vault), Path(focus_note)
@@ -101,10 +111,13 @@ def run_explore(
     if ref is None:
         return _failed(problem)
 
+    if more and (problem := _not_current_focus(vault, focus_note)):
+        return _failed(problem)
+
     pacer = pacer or _make_pacer(sleep, clock)
     trail = [focus_note.stem, *(s for s in _read_trail(vault) if s != focus_note.stem)][: max(1, trail_length)]
-    kept = _trail_stubs(vault, trail)
-    kept_by_id = {ids.s2_id: stem for stem, ids in kept.items() if ids.s2_id}
+    kept = {} if more else _trail_stubs(vault, trail)
+    existing = _stub_index(vault) if more else {ids.s2_id: stem for stem, ids in kept.items() if ids.s2_id}
     hidden = False
     try:
         try:
@@ -112,17 +125,18 @@ def run_explore(
         except ReferencesHidden:
             references, hidden = [], True
         citations = fetch_neighbors(ref, "citation", api_key, transport, pacer=pacer)
-        shown_refs = rank_neighbors(references)[:STUB_CAP_PER_LIST]
-        shown_cits = rank_neighbors(citations)[:STUB_CAP_PER_LIST]
-        ids = list(dict.fromkeys(n.s2_id for n in (*shown_refs, *shown_cits) if n.s2_id not in kept_by_id))
+        shown_refs = _select(rank_neighbors(references), existing, more)
+        shown_cits = _select(rank_neighbors(citations), existing, more)
+        ids = list(dict.fromkeys(n.s2_id for n in (*shown_refs, *shown_cits) if n.s2_id not in existing))
         details = fetch_details(ids, api_key, transport, pacer=pacer)
     except ClientError as err:
         return _failed(f"Semantic Scholar request failed ({err}); _explore/ was left as it was")
 
-    wipe_explore(vault, keep=kept)
-    taken = {_FOCUS_FILE, _TRAIL_FILE, *kept}
-    ref_names = _write_stubs(vault, shown_refs, details, taken, kept_by_id)
-    cit_names = _write_stubs(vault, shown_cits, details, taken, kept_by_id)
+    if not more:
+        wipe_explore(vault, keep=kept)
+    taken = {_FOCUS_FILE, _TRAIL_FILE, *kept, *existing.values()}
+    ref_names = _write_stubs(vault, shown_refs, details, taken, existing)
+    cit_names = _write_stubs(vault, shown_cits, details, taken, existing)
     summary = ExploreSummary(
         ok=True,
         references_total=len(references),
@@ -133,13 +147,50 @@ def run_explore(
         trail=trail,
     )
     write_stub(vault, _FOCUS_FILE, _render_focus(focus_note.stem, ref_names, cit_names, summary))
-    write_stub(vault, _TRAIL_FILE, _render_trail(trail))
+    if not more:
+        write_stub(vault, _TRAIL_FILE, _render_trail(trail))
+    verb = "loaded more for" if more else "explored"
     summary.message = (
-        f"explored {focus_note.stem}: {summary.references_shown} of {summary.references_total} references, "
+        f"{verb} {focus_note.stem}: {summary.references_shown} of {summary.references_total} references, "
         f"{summary.citations_shown} of {summary.citations_total} citations"
         + (" (references hidden by the publisher)" if hidden else "")
     )
     return summary
+
+
+def _select(ranked: Sequence[Neighbor], existing: dict[str, str], more: bool) -> list[Neighbor]:
+    """The neighbours to list: the top slice, or (more) every existing stub plus the next slice, in rank order."""
+    if not more:
+        return list(ranked[:STUB_CAP_PER_LIST])
+    new = {n.s2_id for n in [n for n in ranked if n.s2_id not in existing][:STUB_CAP_PER_LIST]}
+    return [n for n in ranked if n.s2_id in existing or n.s2_id in new]
+
+
+def _not_current_focus(vault: Path, focus_note: Path) -> str:
+    """Why `--more` cannot apply to `focus_note` ("" when it can): it must be the focus in `_focus.md`."""
+    try:
+        text = (explore_path(vault) / f"{_FOCUS_FILE}.md").read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return "there is no current focus yet; run explore on the note first"
+    if read_scalar(split_note(text), "focus") != f"[[{focus_note.stem}]]":
+        return f"{focus_note.stem} is not the current focus; run explore on it first, then --more"
+    return ""
+
+
+def _stub_index(vault: Path) -> dict[str, str]:
+    """s2_id -> stem of every stub currently in `_explore/`."""
+    index: dict[str, str] = {}
+    root = explore_path(vault)
+    for path in sorted(root.glob("*.md")) if root.is_dir() else []:
+        if path.stem in (_FOCUS_FILE, _TRAIL_FILE):
+            continue
+        try:
+            s2_id = read_stub_ids(path.read_text(encoding="utf-8")).s2_id
+        except (OSError, UnicodeDecodeError):
+            continue
+        if s2_id:
+            index[s2_id] = path.stem
+    return index
 
 
 def _paper_ref(vault: Path, focus_note: Path, text: str) -> tuple[str | None, str]:
@@ -226,6 +277,7 @@ def _write_stubs(
         stem = stub_filename(neighbor, taken)
         taken.add(stem)
         write_stub(vault, stem, render_stub(neighbor))
+        existing[neighbor.s2_id] = stem
         names.append(stem)
     return names
 
