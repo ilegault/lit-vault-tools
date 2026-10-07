@@ -1,6 +1,6 @@
 # 11: Enrich: Crossref/OSTI fallbacks and s2_id
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Runner:** any
 
@@ -21,11 +21,11 @@ Tests: temporary vault; fake transport routing by URL to `openalex_work.json`, `
 
 ## Acceptance criteria
 
-- [ ] OpenAlex 404 + Crossref hit: the note gets `enrich_status: partial`, no `openalex_id`, and its Zotero fields and body are byte-identical; the Crossref record (with its `reference_dois`) is available to the linking step: `EnrichSummary.records[<note path>]` equals the `PaperRecord` returned by the Crossref client (ticket 12 reads records from there; if `EnrichSummary` has no `records` mapping yet, add it).
-- [ ] OpenAlex 404 + Crossref 404: `not_found`. No `doi` + OSTI hit: `partial`. No `doi` + OSTI empty: `no_doi`. Each case is a separate test asserting the note's `enrich_status` line.
-- [ ] `s2_id` equals the id in `s2_paper.json` after an `ok` run, and a second run is byte-identical; with S2 returning 404 the note has no `s2_id` line and is still `ok`.
-- [ ] Missing `CROSSREF_MAILTO` skips Crossref (the transport is never called for it) and the note stays `not_found`; no exception, no log record containing the mailto value.
-- [ ] A `ClientError` from a fallback gives `enrich_status: error` with the note's bytes unchanged, and the run continues to the next note.
+- [x] OpenAlex 404 + Crossref hit: the note gets `enrich_status: partial`, no `openalex_id`, and its Zotero fields and body are byte-identical; the Crossref record (with its `reference_dois`) is available to the linking step: `EnrichSummary.records[<note path>]` equals the `PaperRecord` returned by the Crossref client (ticket 12 reads records from there; if `EnrichSummary` has no `records` mapping yet, add it).
+- [x] OpenAlex 404 + Crossref 404: `not_found`. No `doi` + OSTI hit: `partial`. No `doi` + OSTI empty: `no_doi`. Each case is a separate test asserting the note's `enrich_status` line.
+- [x] `s2_id` equals the id in `s2_paper.json` after an `ok` run, and a second run is byte-identical; with S2 returning 404 the note has no `s2_id` line and is still `ok`.
+- [x] Missing `CROSSREF_MAILTO` skips Crossref (the transport is never called for it) and the note stays `not_found`; no exception, no log record containing the mailto value.
+- [x] A `ClientError` from a fallback gives `enrich_status: error` with the note's bytes unchanged, and the run continues to the next note.
 
 ## Gate
 
@@ -38,3 +38,5 @@ pytest -q
 CI (`.github/workflows/tests.yml`) runs exactly these, with `PYTHONUTF8=1` and bogus `OPENALEX_API_KEY` / `S2_API_KEY`. Zero failures before pushing.
 
 ## Comments
+
+2026-10-06: `enrich` now falls back to Crossref (OpenAlex 404 + `CROSSREF_MAILTO`) and OSTI (no DOI, by title) with `partial`, and fills `s2_id` when `S2_API_KEY` is set. `EnrichSummary` gained `partial` and `records` (every fetched record by note path); the refs step now reads `summary.records`, so a Crossref record's `reference_dois` link to saved papers. S2 calls share one `Pacer` per run. All five criteria covered by `tests/test_enrich_fallbacks.py`. tests/conftest.py now clears `S2_API_KEY` and `CROSSREF_MAILTO` for every test (CI exports bogus ones). Mutation checks: calling Crossref without a mailto, and letting an S2 error escape, each turn tests red.

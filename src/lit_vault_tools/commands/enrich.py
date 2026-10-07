@@ -1,4 +1,4 @@
-"""`enrich`: fill graph metadata into saved paper notes from OpenAlex.
+"""`enrich`: fill graph metadata into saved paper notes from OpenAlex (with fallbacks).
 
 WHY THIS EXISTS
 ---------------
@@ -10,11 +10,20 @@ the whole body stay byte-identical (invariant 1).
 
 Statuses (`enrich_status`):
 * `ok`        OpenAlex knew the DOI; values written.
-* `no_doi`    the note has no usable `doi`; nothing to look up.
-* `not_found` OpenAlex answered 404.
-* `error`     a `ClientError`; the note is left untouched (nothing is recorded
+* `partial`   only a fallback knew the paper: Crossref (OpenAlex 404 on a DOI, needs
+              `CROSSREF_MAILTO`) or OSTI (no DOI; searched by the note's `title`).
+              No OpenAlex data is written; the fallback record is kept in
+              `EnrichSummary.records` so the linking step can use its reference DOIs.
+* `no_doi`    no usable `doi` and OSTI did not find the title either.
+* `not_found` OpenAlex 404 and no fallback had it (or Crossref was skipped).
+* `error`     a `ClientError` (OpenAlex or a fallback); the note is left untouched (nothing is recorded
               about a transient failure) and the run continues, so one bad note
               or a rate limit never blocks the rest.
+
+`s2_id` is looked up by DOI when `S2_API_KEY` is set. It is a convenience for
+Explore, so a missing Semantic Scholar record or a `ClientError` just leaves
+`s2_id` out; it never changes the status. One `Pacer` is shared by every S2 call
+in the run so requests stay spaced across notes.
 
 Only `type: paper` notes are processed, even when a path is named explicitly: an
 author note or stub must never gain enrichment keys. Re-running is a no-op
@@ -57,9 +66,10 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from lit_vault_tools.clients import openalex
+from lit_vault_tools.clients import crossref, openalex, osti
 from lit_vault_tools.clients.geo_cache import get_institution_geo, resolve_cache_dir
 from lit_vault_tools.clients.http import ClientError, Transport
+from lit_vault_tools.clients.semantic_scholar import Pacer, fetch_s2_paper_id
 from lit_vault_tools.config import AUTHORS_DIR, INSTITUTIONS_DIR, SUBFIELDS_DIR
 from lit_vault_tools.domain.doi import normalize_doi
 from lit_vault_tools.domain.frontmatter import (
@@ -89,9 +99,12 @@ logger = logging.getLogger(__name__)
 @dataclass
 class EnrichSummary:
     ok: int = 0
+    partial: int = 0
     no_doi: int = 0
     not_found: int = 0
     error: int = 0
+    # every record fetched this run (OpenAlex or fallback), by note path; `refs` is computed from these
+    records: dict[Path, PaperRecord] = field(default_factory=dict)
 
     def record(self, status: str) -> None:
         setattr(self, status, getattr(self, status) + 1)
@@ -110,9 +123,21 @@ class _Registry:
     subfields: EntityIndex
     author_stems: dict[str, str] = field(default_factory=dict)
     taken: dict[str, set[str]] = field(default_factory=dict)
+    crossref_mailto: str | None = None
+    s2_api_key: str | None = None
+    s2_pacer: Pacer | None = None
 
     @classmethod
-    def build(cls, vault: Path, api_key: str, transport: Transport, cache_dir: Path) -> _Registry:
+    def build(
+        cls,
+        vault: Path,
+        api_key: str,
+        transport: Transport,
+        cache_dir: Path,
+        crossref_mailto: str | None = None,
+        s2_api_key: str | None = None,
+        s2_pacer: Pacer | None = None,
+    ) -> _Registry:
         registry = cls(
             vault,
             api_key,
@@ -121,6 +146,9 @@ class _Registry:
             scan_entity_notes(vault, AUTHORS_DIR),
             scan_entity_notes(vault, INSTITUTIONS_DIR),
             scan_entity_notes(vault, SUBFIELDS_DIR),
+            crossref_mailto=crossref_mailto or None,
+            s2_api_key=s2_api_key or None,
+            s2_pacer=s2_pacer or Pacer(),
         )
         # id -> stem for known authors; the developer's own id-less notes count as taken names.
         registry.author_stems = {i: p.stem for i, p in registry.authors.by_id.items()}
@@ -144,13 +172,17 @@ def run_enrich(
     transport: Transport,
     today: datetime.date,
     cache_dir: Path | None = None,
+    crossref_mailto: str | None = None,
+    s2_api_key: str | None = None,
+    s2_pacer: Pacer | None = None,
 ) -> EnrichSummary:
-    """Enrich `notes` (every saved paper in `vault` when None); returns status counts."""
+    """Enrich `notes` (every saved paper in `vault` when None); returns status counts and fetched records."""
     vault = Path(vault)
     paths = [note.path for note in scan_saved_notes(vault)] if notes is None else [Path(n) for n in notes]
-    registry = _Registry.build(vault, api_key, transport, cache_dir or resolve_cache_dir())
+    registry = _Registry.build(
+        vault, api_key, transport, cache_dir or resolve_cache_dir(), crossref_mailto, s2_api_key, s2_pacer
+    )
     summary = EnrichSummary()
-    fetched: dict[Path, PaperRecord] = {}
     for path in paths:
         try:
             text = _read(path)
@@ -161,15 +193,16 @@ def run_enrich(
         if read_scalar(parts, "type") != "paper":
             logger.info("skipping %s: not a paper note", path)
             continue
-        status, record, values = _lookup(read_scalar(parts, "doi"), api_key, transport, path)
+        status, record, values = _lookup(registry, parts, path)
         summary.record(status)
         if values is None:
             continue
         if record is not None:
-            values = {**values, **_link_people(registry, record)}
-            fetched[path] = record
+            summary.records[path] = record
+            if status == "ok":
+                values = {**values, **_link_people(registry, record)}
         write_note(path, apply_enrichment(parts, values, today).render())
-    _write_refs(vault, fetched, today)
+    _write_refs(vault, summary.records, today)
     _write_cited_by(vault, today)
     return summary
 
@@ -201,28 +234,55 @@ def _write_cited_by(vault: Path, today: datetime.date) -> None:
         write_note(note.path, apply_enrichment(parts, {"cited_by": wanted}, today).render())
 
 
-def _lookup(raw_doi: str | None, api_key: str, transport: Transport, path: Path):
+def _lookup(registry: _Registry, parts, path: Path):
     """(status, record, values to write or None to leave the note untouched)."""
-    doi = normalize_doi(raw_doi)
-    if doi is None:
-        return "no_doi", None, {"enrich_status": "no_doi"}
+    doi = normalize_doi(read_scalar(parts, "doi"))
     try:
-        record = openalex.fetch_work(doi, api_key, transport)
+        if doi is None:
+            status, record = _lookup_by_title(registry, read_scalar(parts, "title"))
+        else:
+            status, record = _lookup_by_doi(registry, doi)
     except ClientError as err:
         logger.warning("enrich failed for %s: %s", path, err)
         return "error", None, None
-    if record is None:
-        return "not_found", None, {"enrich_status": "not_found"}
-    return (
-        "ok",
-        record,
-        {
-            "openalex_id": record.openalex_id,
-            "oa_status": record.oa_status,
-            "countries": record.countries,
-            "enrich_status": "ok",
-        },
-    )
+    values: dict[str, str | list[str] | None] = {"enrich_status": status}
+    if status == "ok":
+        values.update(
+            openalex_id=record.openalex_id,
+            oa_status=record.oa_status,
+            countries=record.countries,
+        )
+    s2_id = _s2_id(registry, doi) if doi else None
+    if s2_id:
+        values["s2_id"] = s2_id
+    return status, record, values
+
+
+def _lookup_by_doi(registry: _Registry, doi: str):
+    record = openalex.fetch_work(doi, registry.api_key, registry.transport)
+    if record is not None:
+        return "ok", record
+    if registry.crossref_mailto:
+        record = crossref.fetch_work(doi, registry.crossref_mailto, registry.transport)
+        if record is not None:
+            return "partial", record
+    return "not_found", None
+
+
+def _lookup_by_title(registry: _Registry, title: str | None):
+    record = osti.fetch_by_title(title, registry.transport) if title else None
+    return ("partial", record) if record is not None else ("no_doi", None)
+
+
+def _s2_id(registry: _Registry, doi: str) -> str | None:
+    """Semantic Scholar's id for `doi`; any failure just means no `s2_id` (it never changes the status)."""
+    if not registry.s2_api_key:
+        return None
+    try:
+        return fetch_s2_paper_id(doi, registry.s2_api_key, registry.transport, pacer=registry.s2_pacer)
+    except ClientError as err:
+        logger.warning("Semantic Scholar id lookup failed for %s: %s", doi, err)
+        return None
 
 
 def _link(stem: str) -> str:

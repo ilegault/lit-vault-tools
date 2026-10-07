@@ -10,6 +10,8 @@ testable without a shell.
   (`KEY=VALUE` lines). The environment wins, so a one-off override never needs
   the file edited. Keys are never printed.
 * `--vault` falls back to `LIT_VAULT_DIR`.
+* `CROSSREF_MAILTO` and `S2_API_KEY` are optional: without them Crossref and
+  Semantic Scholar lookups are skipped.
 * Exit codes: 0 success, 1 at least one note ended in `error`, 2 usage or
   configuration problem (missing key or vault); a 2 makes no network call.
 * A note named on the command line is taken relative to the current directory
@@ -84,8 +86,17 @@ def main(argv: Sequence[str] | None = None, transport: Transport | None = None) 
         return 2
     vault = Path(vault_arg)
     notes = [_resolve_note(n, vault) for n in args.notes] or None
-    summary = run_enrich(vault, notes, api_key, transport or stdlib_transport, datetime.date.today())
+    summary = run_enrich(
+        vault,
+        notes,
+        api_key,
+        transport or stdlib_transport,
+        datetime.date.today(),
+        crossref_mailto=_setting("CROSSREF_MAILTO", env_file),
+        s2_api_key=_setting("S2_API_KEY", env_file),
+    )
     print(
-        f"enrich: {summary.ok} ok, {summary.no_doi} no_doi, {summary.not_found} not_found, {summary.error} error"
+        f"enrich: {summary.ok} ok, {summary.partial} partial, {summary.no_doi} no_doi, "
+        f"{summary.not_found} not_found, {summary.error} error"
     )
     return 1 if summary.error else 0
