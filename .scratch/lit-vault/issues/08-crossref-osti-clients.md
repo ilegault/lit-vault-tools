@@ -1,6 +1,6 @@
 # 08: Crossref and OSTI fallback clients
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 **Runner:** any
 
