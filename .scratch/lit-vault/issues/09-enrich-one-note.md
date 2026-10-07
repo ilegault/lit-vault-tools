@@ -1,6 +1,6 @@
 # 09: lit-vault enrich: one note end to end (OpenAlex only)
 
-**Status:** in-progress
+**Status:** done
 
 **Runner:** any
 
@@ -23,11 +23,11 @@ Tests use a temporary vault with real note files and a fake transport replaying 
 
 ## Acceptance criteria
 
-- [ ] Argument parsing: `build_parser().parse_args(["enrich", "--vault", "V", "a.md"])` yields vault `V` and notes `["a.md"]`. `main(["enrich", "--vault", "V"])` with no `OPENALEX_API_KEY` in the environment or `.env` returns exit code 2, prints a message to stderr, and makes no transport call. A `.env` file with `OPENALEX_API_KEY=x` supplies the key; an environment variable of the same name overrides the file.
-- [ ] `run_enrich` on a note with a `doi` leaves the note with `openalex_id`, `oa_status`, `countries` taken from the fixture and `enrich_status: ok`, `enriched_on: <today>`; every pre-existing line and the whole body are byte-identical (compare with `split_note`). Only `type: paper` notes are processed; an author note, a note under `_explore/` and a non-paper note are byte-identical afterwards.
-- [ ] Idempotent: running a second time with a later `today` and the same fixture leaves every file's bytes unchanged and the mtime unchanged (`write_note` returned `False`).
-- [ ] Upstream change: replaying a copy of the fixture with a different open-access status changes only the `oa_status` line and `enriched_on` (now the new `today`).
-- [ ] A note with no `doi` gets `enrich_status: no_doi`; a 404 gives `not_found`; a 500 gives `error` and the note's bytes are unchanged; in all three cases the other notes in the run are still enriched, the summary counts each status, and `main` returns exit code 1 when any note ended `error`, else 0.
+- [x] Argument parsing: `build_parser().parse_args(["enrich", "--vault", "V", "a.md"])` yields vault `V` and notes `["a.md"]`. `main(["enrich", "--vault", "V"])` with no `OPENALEX_API_KEY` in the environment or `.env` returns exit code 2, prints a message to stderr, and makes no transport call. A `.env` file with `OPENALEX_API_KEY=x` supplies the key; an environment variable of the same name overrides the file.
+- [x] `run_enrich` on a note with a `doi` leaves the note with `openalex_id`, `oa_status`, `countries` taken from the fixture and `enrich_status: ok`, `enriched_on: <today>`; every pre-existing line and the whole body are byte-identical (compare with `split_note`). Only `type: paper` notes are processed; an author note, a note under `_explore/` and a non-paper note are byte-identical afterwards.
+- [x] Idempotent: running a second time with a later `today` and the same fixture leaves every file's bytes unchanged and the mtime unchanged (`write_note` returned `False`).
+- [x] Upstream change: replaying a copy of the fixture with a different open-access status changes only the `oa_status` line and `enriched_on` (now the new `today`).
+- [x] A note with no `doi` gets `enrich_status: no_doi`; a 404 gives `not_found`; a 500 gives `error` and the note's bytes are unchanged; in all three cases the other notes in the run are still enriched, the summary counts each status, and `main` returns exit code 1 when any note ended `error`, else 0.
 
 ## Gate
 
@@ -40,3 +40,5 @@ pytest -q
 CI (`.github/workflows/tests.yml`) runs exactly these, with `PYTHONUTF8=1` and bogus `OPENALEX_API_KEY` / `S2_API_KEY`. Zero failures before pushing.
 
 ## Comments
+
+2026-10-06: Added `cli.py` (parser, .env loading, exit codes 0/1/2), `commands/enrich.py` (`run_enrich`, `EnrichSummary`). All five criteria covered by `tests/test_enrich.py`. Explicit NOTE paths resolve against the cwd, else the vault. Mutation check: dropping the paper-only guard turns a test red. Not covered here: authors, institutions, fallbacks, links (later tickets).
