@@ -120,7 +120,7 @@ def test_only_paper_notes_are_processed(tmp_path):
     make(tmp_path, "p.md", PAPER)
     others = {
         "Jane Doe.md": f"---\ntype: author\ndoi: {DOI}\n---\nbio\n",
-        "_explore/stub.md": f"---\ntype: stub\ndoi: {DOI}\n---\n",
+        "_explore/stub.md": "---\ntype: stub\ndoi: 10.1000/unrelated-stub\n---\n",  # no saved paper has this DOI
         "misc.md": f"---\ntitle: x\ndoi: {DOI}\n---\nbody\n",
     }
     for rel, text in others.items():

@@ -55,6 +55,10 @@ pass, so a paper that only got its `openalex_id` this run can still be matched).
 in the vault, with no network, and written only when it differs. Only saved
 papers ever appear; stale links disappear because `refs` is recomputed from the
 current vault each time the note is enriched.
+
+Finally `retire_stubs` deletes any stub in `_explore/` whose paper is now saved and
+repoints its links to the real note (so saving a paper and running `enrich` is
+all it takes).
 """
 
 from __future__ import annotations
@@ -92,6 +96,7 @@ from lit_vault_tools.domain.people import (
     sanitize_filename,
 )
 from lit_vault_tools.vault.notes import EntityIndex, scan_entity_notes, scan_saved_notes, write_note
+from lit_vault_tools.vault.retire import retire_stubs
 
 logger = logging.getLogger(__name__)
 
@@ -204,6 +209,7 @@ def run_enrich(
         write_note(path, apply_enrichment(parts, values, today).render())
     _write_refs(vault, summary.records, today)
     _write_cited_by(vault, today)
+    retire_stubs(vault)
     return summary
 
 
