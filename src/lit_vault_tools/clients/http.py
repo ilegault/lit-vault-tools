@@ -13,7 +13,7 @@ case-sensitive, so every request would silently go out unauthenticated.
 
 * A non-success status is not an error here: `stdlib_transport` returns it and
   the client decides (404 is "not found", 429/500 are `ClientError`).
-* `ClientError` redacts any `api_key=` query value from the URL it reports,
+* `ClientError` redacts any `api_key=` or `mailto=` query value from the URL it reports,
   because OpenAlex takes its key in the query string and an exception message
   ends up in terminal output and logs.
 * Redirects (301/302/303/307/308) are followed a bounded number of times.
@@ -31,7 +31,7 @@ from urllib.parse import urljoin, urlsplit
 _TIMEOUT_SECONDS = 30
 _MAX_REDIRECTS = 5
 _REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
-_KEY_PARAM = re.compile(r"(api_key=)[^&#]*", re.IGNORECASE)
+_KEY_PARAM = re.compile(r"((?:api_key|mailto)=)[^&#]*", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -47,7 +47,7 @@ class Transport(Protocol):
 
 
 class ClientError(Exception):
-    """A non-success status other than 404. The message never contains an API key."""
+    """A non-success status other than 404. The message never contains an API key or mailto."""
 
     def __init__(self, status: int, url: str) -> None:
         self.status = status

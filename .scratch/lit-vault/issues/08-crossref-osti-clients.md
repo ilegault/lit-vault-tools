@@ -1,6 +1,6 @@
 # 08: Crossref and OSTI fallback clients
 
-**Status:** in-progress
+**Status:** done
 
 **Runner:** any
 
@@ -21,11 +21,11 @@ Tests fake only the transport, replaying `crossref_work.json` and `osti_record.j
 
 ## Acceptance criteria
 
-- [ ] `crossref.fetch_work` with the fixture returns `reference_dois` equal to the fixture's `reference[].DOI` values, normalized, in order, excluding entries that lack a DOI, and `doi` equal to the normalized fixture DOI.
-- [ ] `crossref.fetch_work` sends the `mailto` exactly where `tests/fixtures/README.md` records it; a 404 returns `None`; 429/500 raise `ClientError`.
-- [ ] `osti.fetch_by_title` with the fixture returns a record whose `doi` equals the fixture's DOI normalized (or `None` when the fixture has none), and returns `None` when the transport returns an empty result list (use a copy of the fixture with the list emptied).
-- [ ] `crossref.fetch_work` with `mailto=""` sends no `mailto` parameter at all (the test asserts the requested URL contains no `mailto=`), so Explore can call it when `CROSSREF_MAILTO` is unset.
-- [ ] Neither client's `ClientError` message nor any log record contains the `mailto` value used in the test.
+- [x] `crossref.fetch_work` with the fixture returns `reference_dois` equal to the fixture's `reference[].DOI` values, normalized, in order, excluding entries that lack a DOI, and `doi` equal to the normalized fixture DOI.
+- [x] `crossref.fetch_work` sends the `mailto` exactly where `tests/fixtures/README.md` records it; a 404 returns `None`; 429/500 raise `ClientError`.
+- [x] `osti.fetch_by_title` with the fixture returns a record whose `doi` equals the fixture's DOI normalized (or `None` when the fixture has none), and returns `None` when the transport returns an empty result list (use a copy of the fixture with the list emptied).
+- [x] `crossref.fetch_work` with `mailto=""` sends no `mailto` parameter at all (the test asserts the requested URL contains no `mailto=`), so Explore can call it when `CROSSREF_MAILTO` is unset.
+- [x] Neither client's `ClientError` message nor any log record contains the `mailto` value used in the test.
 
 ## Gate
 
@@ -38,3 +38,5 @@ pytest -q
 CI (`.github/workflows/tests.yml`) runs exactly these, with `PYTHONUTF8=1` and bogus `OPENALEX_API_KEY` / `S2_API_KEY`. Zero failures before pushing.
 
 ## Comments
+
+2026-10-06: Added `clients/crossref.py` and `clients/osti.py`. `PaperRecord.openalex_id` is now optional (fallback records have none) and `ClientError` also redacts `mailto=`. All five criteria covered by `tests/test_crossref_osti_clients.py`; mutation check (not redacting mailto) turns three tests red.

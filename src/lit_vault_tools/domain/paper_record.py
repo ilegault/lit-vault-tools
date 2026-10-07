@@ -17,7 +17,7 @@ from lit_vault_tools.domain.people import AuthorRef, InstitutionRef
 
 @dataclass(frozen=True)
 class PaperRecord:
-    openalex_id: str
+    openalex_id: str | None
     doi: str | None
     oa_status: str | None
     authors: list[tuple[AuthorRef, list[str]]]
