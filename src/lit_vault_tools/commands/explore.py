@@ -20,6 +20,9 @@ obvious when there is more.
 References the publisher has hidden (`ReferencesHidden`) are reported as hidden,
 never shown as an empty list. The Crossref fallback for that case is ticket 22.
 
+Once everything is written, `retire_stubs` removes the stub of any neighbour that
+is already a saved paper and links the saved note instead.
+
 Load more (`more=True`)
 -----------------------
 Re-fetches and re-ranks the same focus, then writes the next `STUB_CAP_PER_LIST`
@@ -65,6 +68,7 @@ from lit_vault_tools.domain.frontmatter import read_scalar, split_note
 from lit_vault_tools.domain.neighbors import Neighbor, rank_neighbors, stub_filename
 from lit_vault_tools.domain.stubs import read_stub_ids, render_stub
 from lit_vault_tools.vault.explore_dir import explore_path, wipe_explore, write_stub
+from lit_vault_tools.vault.retire import retire_stubs
 
 logger = logging.getLogger(__name__)
 
@@ -149,6 +153,7 @@ def run_explore(
     write_stub(vault, _FOCUS_FILE, _render_focus(focus_note.stem, ref_names, cit_names, summary))
     if not more:
         write_stub(vault, _TRAIL_FILE, _render_trail(trail))
+    retire_stubs(vault)
     verb = "loaded more for" if more else "explored"
     summary.message = (
         f"{verb} {focus_note.stem}: {summary.references_shown} of {summary.references_total} references, "
