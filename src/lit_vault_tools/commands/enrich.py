@@ -36,6 +36,16 @@ Each author, institution and subfield gets a note in `Authors/`, `Institutions/`
   developer's own id-less notes are taken names, so they are never overwritten;
 * an unknown location is omitted, never `0,0` (invariant 6); it is not cached, so
   a later run can add it. A geo lookup that fails must not fail the paper.
+
+Saved-paper links
+-----------------
+After the per-note phase, `refs` is set on every note fetched this run by matching
+its OpenAlex reference ids / reference DOIs against all saved papers (a second
+pass, so a paper that only got its `openalex_id` this run can still be matched).
+`cited_by` is then recomputed for every saved note as the inverse of all `refs`
+in the vault, with no network, and written only when it differs. Only saved
+papers ever appear; stale links disappear because `refs` is recomputed from the
+current vault each time the note is enriched.
 """
 
 from __future__ import annotations
@@ -59,6 +69,7 @@ from lit_vault_tools.domain.frontmatter import (
     set_key_line,
     split_note,
 )
+from lit_vault_tools.domain.links import cited_by_map, link_stem, make_link, resolve_refs
 from lit_vault_tools.domain.paper_record import PaperRecord
 from lit_vault_tools.domain.people import (
     InstitutionRef,
@@ -139,6 +150,7 @@ def run_enrich(
     paths = [note.path for note in scan_saved_notes(vault)] if notes is None else [Path(n) for n in notes]
     registry = _Registry.build(vault, api_key, transport, cache_dir or resolve_cache_dir())
     summary = EnrichSummary()
+    fetched: dict[Path, PaperRecord] = {}
     for path in paths:
         try:
             text = _read(path)
@@ -155,8 +167,38 @@ def run_enrich(
             continue
         if record is not None:
             values = {**values, **_link_people(registry, record)}
+            fetched[path] = record
         write_note(path, apply_enrichment(parts, values, today).render())
+    _write_refs(vault, fetched, today)
+    _write_cited_by(vault, today)
     return summary
+
+
+def _write_refs(vault: Path, fetched: dict[Path, PaperRecord], today: datetime.date) -> None:
+    """Set `refs` on each note fetched this run, matched against every saved paper (after phase one)."""
+    if not fetched:
+        return
+    saved = scan_saved_notes(vault)
+    candidates = [(note.path.stem, note.ids) for note in saved]
+    for path, record in fetched.items():
+        stems = resolve_refs(record.references, record.reference_dois, candidates, own=path.stem)
+        parts = split_note(_read(path))
+        write_note(path, apply_enrichment(parts, {"refs": [make_link(s) for s in stems]}, today).render())
+
+
+def _write_cited_by(vault: Path, today: datetime.date) -> None:
+    """Set `cited_by` on every saved note as the inverse of all saved notes' `refs`; no network."""
+    saved = scan_saved_notes(vault)
+    refs_by_stem = {
+        note.path.stem: [link_stem(link) for link in read_list(split_note(note.text), "refs")] for note in saved
+    }
+    cited = cited_by_map(refs_by_stem)
+    for note in saved:
+        wanted = [make_link(stem) for stem in cited.get(note.path.stem, [])]
+        parts = split_note(note.text)
+        if read_list(parts, "cited_by") == wanted:
+            continue
+        write_note(note.path, apply_enrichment(parts, {"cited_by": wanted}, today).render())
 
 
 def _lookup(raw_doi: str | None, api_key: str, transport: Transport, path: Path):
