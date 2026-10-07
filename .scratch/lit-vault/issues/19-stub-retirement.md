@@ -1,6 +1,6 @@
 # 19: Stub retirement when a paper is saved
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 **Runner:** any
 
