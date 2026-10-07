@@ -23,6 +23,9 @@ ENRICHMENT_KEYS: tuple[str, ...] = (
 )
 
 EXPLORE_DIR = "_explore"
+AUTHORS_DIR = "Authors"
+INSTITUTIONS_DIR = "Institutions"
+SUBFIELDS_DIR = "Subfields"
 STUB_CAP_PER_LIST = 200
 TRAIL_LENGTH = 3
 STUB_TITLE_MAX_CHARS = 40

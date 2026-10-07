@@ -264,3 +264,23 @@ def apply_enrichment(parts: NoteParts, values: Mapping[str, Value], today: datet
         return NoteParts(parts.opener, new_lines, parts.closer, parts.body, parts.eol)
     rule = "---" + parts.eol
     return NoteParts(rule, new_lines, rule, parts.body, parts.eol)
+
+
+def set_key_line(parts: NoteParts, key: str, rendered: str) -> NoteParts:
+    """Set one non-enrichment key (`aliases`, `location`) on a person/place note.
+
+    The `key: rendered` line replaces the key's existing line (and its block
+    continuation) in place, or is appended at the end of the frontmatter. Every
+    other line and the body are carried through verbatim. A note without
+    frontmatter is returned unchanged: this is only used on notes the script
+    itself created, whose identity was already read from frontmatter.
+    """
+    if not parts.opener:
+        return parts
+    line = f"{key}: {rendered}{parts.eol}"
+    index = _find(parts.lines, key)
+    if index is None:
+        return NoteParts(parts.opener, (*parts.lines, line), parts.closer, parts.body, parts.eol)
+    end = index + 1 + len(_continuation(parts.lines, index))
+    lines = (*parts.lines[:index], line, *parts.lines[end:])
+    return NoteParts(parts.opener, lines, parts.closer, parts.body, parts.eol)

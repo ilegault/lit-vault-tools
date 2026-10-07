@@ -1,6 +1,6 @@
 # 10: Enrich writes author, institution and subfield notes and links
 
-**Status:** in-progress
+**Status:** done
 
 **Runner:** any
 
@@ -21,11 +21,11 @@ Tests: temporary vault; fake transport replaying `openalex_work.json` and `opena
 
 ## Acceptance criteria
 
-- [ ] After enrich, the saved note has `authors`, `institutions` and `subfield` as `[[...]]` link lists matching the fixture, and `Authors/`, `Institutions/`, `Subfields/` contain one note per fixture author / institution / subfield with the correct `openalex_id`, `type` and (authors) `aliases`.
-- [ ] Re-running changes nothing: the whole vault tree (names and bytes) is identical, including `enriched_on` and the new notes.
-- [ ] Collision: two papers whose authors share a display name but have different OpenAlex ids produce `Authors/Jane Doe.md` and `Authors/Jane Doe (<institution>).md`; running again with the papers in reverse order renames nothing.
-- [ ] The developer's own work survives: an existing `Authors/<name>.md` containing typed body text keeps its body byte-for-byte while its `aliases` gains new name variants; and if that file is renamed by hand, the next enrich finds it by `openalex_id`, creates no duplicate, and the saved note links to the renamed file.
-- [ ] Institution `location` comes from the fake geo lookup as `lat,lng`; when the lookup returns `None` the institution note has no `location:` line and no `0,0` appears in the file; the geo cache is read on the second run (the fake transport's institution call count does not grow).
+- [x] After enrich, the saved note has `authors`, `institutions` and `subfield` as `[[...]]` link lists matching the fixture, and `Authors/`, `Institutions/`, `Subfields/` contain one note per fixture author / institution / subfield with the correct `openalex_id`, `type` and (authors) `aliases`.
+- [x] Re-running changes nothing: the whole vault tree (names and bytes) is identical, including `enriched_on` and the new notes.
+- [x] Collision: two papers whose authors share a display name but have different OpenAlex ids produce `Authors/Jane Doe.md` and `Authors/Jane Doe (<institution>).md`; running again with the papers in reverse order renames nothing.
+- [x] The developer's own work survives: an existing `Authors/<name>.md` containing typed body text keeps its body byte-for-byte while its `aliases` gains new name variants; and if that file is renamed by hand, the next enrich finds it by `openalex_id`, creates no duplicate, and the saved note links to the renamed file.
+- [x] Institution `location` comes from the fake geo lookup as `lat,lng`; when the lookup returns `None` the institution note has no `location:` line and no `0,0` appears in the file; the geo cache is read on the second run (the fake transport's institution call count does not grow).
 
 ## Gate
 
@@ -38,3 +38,5 @@ pytest -q
 CI (`.github/workflows/tests.yml`) runs exactly these, with `PYTHONUTF8=1` and bogus `OPENALEX_API_KEY` / `S2_API_KEY`. Zero failures before pushing.
 
 ## Comments
+
+2026-10-06: `enrich` now writes authors/institutions/subfield links and the Authors/, Institutions/, Subfields/ notes (`commands/enrich.py`). Supporting changes: `PaperRecord.subfield_id` and `author_raw_names` (aliases come from the name printed on the paper), `vault.notes.scan_entity_notes` (match by openalex_id), `frontmatter.set_key_line`, folder names in config, and a suite-wide conftest that points `LIT_VAULT_CACHE_DIR` at a temp dir. All five criteria covered by `tests/test_enrich_people.py`. Mutation checks: replacing aliases instead of appending, and matching authors by filename, each turn tests red.

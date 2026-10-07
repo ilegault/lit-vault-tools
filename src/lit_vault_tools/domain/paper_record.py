@@ -26,3 +26,7 @@ class PaperRecord:
     subfield: str | None
     references: list[str]
     reference_dois: list[str] = field(default_factory=list)
+    # OpenAlex subfield id (`2505`), so the subfield note can be matched by id, not name.
+    subfield_id: str | None = None
+    # author OpenAlex id -> the name as printed on the paper, kept as an alias when it differs.
+    author_raw_names: dict[str, str] = field(default_factory=dict)

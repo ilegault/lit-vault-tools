@@ -243,3 +243,20 @@ def test_value_needing_quotes_round_trips():
 def test_note_without_frontmatter_gets_a_block_and_keeps_its_body():
     out = apply_enrichment(split_note("Just a body.\n"), {"openalex_id": "W1"}, TODAY).render()
     assert out == f"---\n{MARKER}\nopenalex_id: W1\nenriched_on: 2026-10-06\n---\nJust a body.\n"
+
+
+def test_set_key_line_replaces_in_place_and_keeps_everything_else():
+    from lit_vault_tools.domain.frontmatter import set_key_line, split_note
+
+    text = '---\r\ntype: author\r\naliases: ["a"]\r\nnote: |\r\n  keep\r\n---\r\nbody\r\n'
+    out = set_key_line(split_note(text), "aliases", '["a", "b"]').render()
+    assert out == '---\r\ntype: author\r\naliases: ["a", "b"]\r\nnote: |\r\n  keep\r\n---\r\nbody\r\n'
+
+
+def test_set_key_line_appends_missing_key_and_drops_block_continuation():
+    from lit_vault_tools.domain.frontmatter import set_key_line, split_note
+
+    appended = set_key_line(split_note("---\ntype: institution\n---\nmine\n"), "location", "1.5,2.5").render()
+    assert appended == "---\ntype: institution\nlocation: 1.5,2.5\n---\nmine\n"
+    block = set_key_line(split_note("---\naliases:\n  - old\ntype: x\n---\n"), "aliases", '["new"]').render()
+    assert block == '---\naliases: ["new"]\ntype: x\n---\n'
