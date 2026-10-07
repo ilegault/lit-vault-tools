@@ -1,6 +1,6 @@
 # 09: lit-vault enrich: one note end to end (OpenAlex only)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 **Runner:** any
 
