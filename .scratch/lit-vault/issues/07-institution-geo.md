@@ -1,6 +1,6 @@
 # 07: Cached institution coordinate lookup
 
-**Status:** in-progress
+**Status:** done
 
 **Runner:** any
 
@@ -21,11 +21,11 @@ Tests fake the transport with `tests/fixtures/openalex_institution.json` and poi
 
 ## Acceptance criteria
 
-- [ ] `fetch_institution_geo` returns the `(lat, lng)` found in the fixture (read the fixture for the field path) and `None` when the fixture's coordinates are null (use a copy of the fixture with them nulled).
-- [ ] `get_institution_geo` on a cold cache calls `fetch` once and writes `institutions.json` under the cache dir; a second call for the same id returns the same value and the fake transport's call count stays 1.
-- [ ] A `None` result is not cached: calling twice for an unknown location calls `fetch` twice (so it can be found later).
-- [ ] A corrupted `institutions.json` (invalid JSON) is treated as an empty cache and rewritten valid; no exception escapes.
-- [ ] Cache directory resolution is tested for each branch (`LIT_VAULT_CACHE_DIR`, `LOCALAPPDATA`, `XDG_CACHE_HOME`, home fallback) by monkeypatching environment variables; nothing is ever written inside a vault directory or the repo (assert the temp vault listing is unchanged).
+- [x] `fetch_institution_geo` returns the `(lat, lng)` found in the fixture (read the fixture for the field path) and `None` when the fixture's coordinates are null (use a copy of the fixture with them nulled).
+- [x] `get_institution_geo` on a cold cache calls `fetch` once and writes `institutions.json` under the cache dir; a second call for the same id returns the same value and the fake transport's call count stays 1.
+- [x] A `None` result is not cached: calling twice for an unknown location calls `fetch` twice (so it can be found later).
+- [x] A corrupted `institutions.json` (invalid JSON) is treated as an empty cache and rewritten valid; no exception escapes.
+- [x] Cache directory resolution is tested for each branch (`LIT_VAULT_CACHE_DIR`, `LOCALAPPDATA`, `XDG_CACHE_HOME`, home fallback) by monkeypatching environment variables; nothing is ever written inside a vault directory or the repo (assert the temp vault listing is unchanged).
 
 ## Gate
 
@@ -38,3 +38,5 @@ pytest -q
 CI (`.github/workflows/tests.yml`) runs exactly these, with `PYTHONUTF8=1` and bogus `OPENALEX_API_KEY` / `S2_API_KEY`. Zero failures before pushing.
 
 ## Comments
+
+2026-10-06: Added `fetch_institution_geo` (openalex.py) and `clients/geo_cache.py` (cache dir resolution, JSON cache, None never cached, corrupt cache rewritten). All five criteria covered by `tests/test_geo_cache.py`. Mutation check: caching None turns two tests red.

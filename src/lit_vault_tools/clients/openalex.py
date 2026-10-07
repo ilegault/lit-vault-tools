@@ -44,6 +44,25 @@ def fetch_work(doi: str, api_key: str, transport: Transport) -> PaperRecord | No
     return _parse(json.loads(response.body))
 
 
+def fetch_institution_geo(institution_id: str, api_key: str, transport: Transport) -> tuple[float, float] | None:
+    """(latitude, longitude) of one institution, or None when unknown (404 or null coordinates).
+
+    Work responses carry only dehydrated institutions (no coordinates), hence this
+    per-institution lookup. Invariant 6: unknown means None, never (0, 0).
+    """
+    url = f"{_BASE}/institutions/{_id(institution_id)}?api_key={api_key}"
+    response = transport("GET", url, {}, None)
+    if response.status == 404:
+        return None
+    if not 200 <= response.status < 300:
+        raise ClientError(response.status, url)
+    geo = json.loads(response.body).get("geo") or {}
+    lat, lng = geo.get("latitude"), geo.get("longitude")
+    if lat is None or lng is None:
+        return None
+    return float(lat), float(lng)
+
+
 def _parse(raw: dict) -> PaperRecord:
     authors: list[tuple[AuthorRef, list[str]]] = []
     institutions: dict[str, InstitutionRef] = {}
