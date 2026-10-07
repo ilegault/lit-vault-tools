@@ -1,6 +1,6 @@
 # 10: Enrich writes author, institution and subfield notes and links
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 **Runner:** any
 
